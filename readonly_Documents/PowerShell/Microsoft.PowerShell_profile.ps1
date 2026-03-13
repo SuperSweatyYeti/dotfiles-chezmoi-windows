@@ -67,7 +67,6 @@ Set-PSReadLineOption -Colors @{
   InlinePrediction   = '#6c6c6c'  # dim grey → clearly distinct from typed text
 }
 
-
 # Custom Prompt
 $global:ChezmoiCheck = $true
 
@@ -75,6 +74,9 @@ function Enable-ChezmoiCheck { $global:ChezmoiCheck = $true; Write-Host "Chezmoi
 function Disable-ChezmoiCheck { $global:ChezmoiCheck = $false; Write-Host "Chezmoi check OFF" }
 
 function prompt {
+    # Capture success/failure FIRST before anything else resets it
+    $lastSuccess = $?
+
     try {
         $user = $env:USERNAME
         $host_name = $env:COMPUTERNAME
@@ -105,7 +107,10 @@ function prompt {
         }
 
         Write-Host ""
-        return "╰─ ❯ "
+        $promptColor = if ($lastSuccess) { "Green" } else { "Red" }
+        Write-Host "╰─ " -NoNewline -ForegroundColor White
+        Write-Host "❯ " -NoNewline -ForegroundColor $promptColor
+        return " "
     }
     catch {
         return "╰─ ❯ "
