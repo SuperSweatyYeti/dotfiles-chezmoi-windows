@@ -1,5 +1,20 @@
 Set-Alias -Name ll -Value Get-ChildItem -Force
 
+if (Get-Command lazygit.exe -ErrorAction SilentlyContinue) {
+    Set-Alias -Name lg -Value lazygit 
+}
+
+if (Get-Command chezmoi.exe -ErrorAction SilentlyContinue) {
+    function chezcd {
+        if (-not (Test-Path -Path $env:HOMEPATH\.local\share\chezmoi) ) { 
+           return
+        }
+        else {
+           Set-Location $env:HOMEPATH\.local\share\chezmoi
+        }
+    }
+}
+
 # Use wsl ssh instead of windows ssh if wsl distro exists
 function ssh {
     if (Get-Command wsl.exe -ErrorAction SilentlyContinue) {
