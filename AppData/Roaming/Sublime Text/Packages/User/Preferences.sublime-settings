@@ -1,0 +1,7 @@
+{
+	"font_size": 13,
+	// Display the toggle sidebar button in the status bar
+	"show_sidebar_button": true,
+	"remember_open_files": true,
+}
+

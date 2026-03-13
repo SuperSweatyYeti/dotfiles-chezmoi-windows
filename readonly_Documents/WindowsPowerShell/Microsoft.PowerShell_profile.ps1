@@ -57,16 +57,6 @@ function cdy {
   Write-Warning "cdy: yazi did not write a valid directory."
 }
 
-# Accept inline history suggestion with Ctrl+Y
-Set-PSReadLineKeyHandler -Chord 'Ctrl+y' -Function AcceptSuggestion
-
-# Make prediction/suggestion text a more distinct color
-Set-PSReadLineOption -PredictionSource History
-Set-PSReadLineOption -Colors @{
-  Command            = 'Cyan'
-  InlinePrediction   = '#6c6c6c'  # dim grey → clearly distinct from typed text
-}
-
 
 # Custom Prompt
 $global:ChezmoiCheck = $true
@@ -82,7 +72,6 @@ function prompt {
         $path = $path -replace '\\', '/'
 
         Write-Host ""
-        Write-Host "╭╴" -NoNewline -ForegroundColor White
         Write-Host "$user" -NoNewline -ForegroundColor Cyan
         Write-Host "@" -NoNewline -ForegroundColor White
         Write-Host "$host_name" -NoNewline -ForegroundColor Magenta
@@ -105,9 +94,10 @@ function prompt {
         }
 
         Write-Host ""
-        return "╰─ ❯ "
+        return "-> "
     }
     catch {
-        return "╰─ ❯ "
+        return "-> "
     }
 }
+
