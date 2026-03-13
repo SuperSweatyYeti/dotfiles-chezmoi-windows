@@ -109,7 +109,7 @@ function prompt {
         Write-Host ""
         $promptColor = if ($lastSuccess) { "Green" } else { "Red" }
         Write-Host "╰─ " -NoNewline -ForegroundColor White
-        Write-Host "❯ " -NoNewline -ForegroundColor $promptColor
+        Write-Host "❯" -NoNewline -ForegroundColor $promptColor
         return " "
     }
     catch {
