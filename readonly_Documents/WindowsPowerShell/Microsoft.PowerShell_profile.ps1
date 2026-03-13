@@ -6,7 +6,7 @@ if (Get-Command lazygit.exe -ErrorAction SilentlyContinue) {
 
 if (Get-Command chezmoi.exe -ErrorAction SilentlyContinue) {
     Set-Alias -Name cmoi -Value chezmoi -Force
-    function chezcd {
+    function cmoicd {
         if (-not (Test-Path -Path $env:HOMEPATH\.local\share\chezmoi) ) { 
            return
         }
@@ -89,7 +89,7 @@ function prompt {
         if ($global:ChezmoiCheck) {
             $czStatus = chezmoi status 2>$null
             if ($czStatus) {
-                Write-Host " 🏠±" -NoNewline -ForegroundColor Yellow
+                Write-Host " chezmoi-diff" -NoNewline -ForegroundColor Yellow
             }
         }
 

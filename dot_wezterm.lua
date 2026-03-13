@@ -101,6 +101,9 @@ config.launch_menu = {
 
 config.disable_default_key_bindings = true
 
+-- Don't change windows size when changing font size
+config.adjust_window_size_when_changing_font_size = false
+
 config.keys = {
 
   -- Re-add essential default bindings
@@ -114,7 +117,8 @@ config.keys = {
   { key = 'l',     mods = 'CTRL|SHIFT', action = act.ShowDebugOverlay },
   { key = 'f',     mods = 'CTRL|SHIFT', action = act.Search 'CurrentSelectionOrEmptyString' },
   { key = 'Enter', mods = 'ALT',        action = act.ToggleFullScreen },
-  { key = '+',     mods = 'CTRL',       action = act.IncreaseFontSize },
+  -- Change Font Size
+  { key = '=',     mods = 'CTRL',       action = act.IncreaseFontSize },
   { key = '-',     mods = 'CTRL',       action = act.DecreaseFontSize },
   { key = '0',     mods = 'CTRL',       action = act.ResetFontSize },
   -- Command palette
