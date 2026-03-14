@@ -5,8 +5,6 @@ local act = wezterm.action
 -- This will hold the configuration.
 local config = wezterm.config_builder()
 
--- comment
--- comment2
 
 config.window_padding = {
   left = '1cell',
