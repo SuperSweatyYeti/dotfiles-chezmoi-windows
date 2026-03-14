@@ -44,6 +44,9 @@ config.colors = {
   scrollbar_thumb = '#9b9b9b',
 }
 
+-- Don't change windows size when changing font size
+config.adjust_window_size_when_changing_font_size = false
+
 -- Windows PowerShell 5.1 exact colors
 local powershell_classic = {
   scrollbar_thumb = '#9b9b9b',
@@ -100,9 +103,6 @@ config.launch_menu = {
 }
 
 config.disable_default_key_bindings = true
-
--- Don't change windows size when changing font size
-config.adjust_window_size_when_changing_font_size = false
 
 config.keys = {
 
@@ -170,8 +170,8 @@ config.keys = {
   { key = 'DownArrow',  mods = 'CTRL|SHIFT', action = act.ActivatePaneDirection 'Down'  },
 
   -- Cycle between tabs
-  { key = '{', mods = 'CTRL|SHIFT', action = act.ActivateTabRelative(1)  },
-  { key = '}', mods = 'CTRL|SHIFT', action = act.ActivateTabRelative(-1) },
+  { key = '}', mods = 'CTRL|SHIFT', action = act.ActivateTabRelative(1)  },
+  { key = '{', mods = 'CTRL|SHIFT', action = act.ActivateTabRelative(-1) },
 
   -- Close current pane
   { key = 'x', mods = 'CTRL|SHIFT', action = act.CloseCurrentPane { confirm = true } },
@@ -226,6 +226,48 @@ wezterm.on('update-status', function(window, pane)
   else
     window:set_config_overrides({ color_scheme = 'Catppuccin Mocha (Gogh)', colors = { scrollbar_thumb = '#9b9b9b' } })
   end
+end)
+
+-- Static tab titles — detected once, locked permanently
+-- Only locks in a title when we recognize an actual shell process.
+-- Returns a temporary label until then so it keeps retrying.
+local tab_titles = {}
+
+local function detect_shell(process)
+  local p = process:lower()
+  if p:find('pwsh') then
+    return 'PowerShell'
+  elseif p:find('powershell') then
+    return 'Windows PowerShell'
+  elseif p:find('cmd') then
+    return 'CMD'
+  elseif p:find('wsl') or p:find('debian') or p:find('bash') or p:find('zsh') then
+    return 'WSL - Debian'
+  end
+  return nil
+end
+
+wezterm.on('format-tab-title', function(tab, tabs, panes, config, hover, max_width)
+  local tab_id = tostring(tab.tab_id)
+
+  -- If already locked in, use it
+  if tab_titles[tab_id] then
+    return { { Text = ' ' .. (tab.tab_index + 1) .. ': ' .. tab_titles[tab_id] .. ' ' } }
+  end
+
+  -- Try to detect from foreground process
+  local process = tab.active_pane.foreground_process_name or ''
+  local title = detect_shell(process)
+
+  if title then
+    -- Recognized a shell — lock it in permanently
+    tab_titles[tab_id] = title
+  else
+    -- Not recognized yet — show temporary title, don't store so we retry next time
+    title = 'Starting...'
+  end
+
+  return { { Text = ' ' .. (tab.tab_index + 1) .. ': ' .. title .. ' ' } }
 end)
 
 -- Finally, return the configuration to wezterm:

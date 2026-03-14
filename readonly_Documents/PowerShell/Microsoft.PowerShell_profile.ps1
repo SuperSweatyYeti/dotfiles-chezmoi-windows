@@ -1,5 +1,10 @@
 Set-Alias -Name ll -Value Get-ChildItem -Force
 
+
+if (Get-Command nvim -ErrorAction SilentlyContinue) {
+    Set-Alias -Name vim -Value nvim -Force
+}
+
 if (Get-Command lazygit.exe -ErrorAction SilentlyContinue) {
     Set-Alias -Name lg -Value lazygit 
 }
