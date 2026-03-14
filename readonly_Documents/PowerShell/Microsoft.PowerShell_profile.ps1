@@ -1,5 +1,7 @@
-Set-Alias -Name ll -Value Get-ChildItem -Force
-
+# Alias
+function ll {
+    Get-ChildItem -Force
+}
 
 if (Get-Command nvim -ErrorAction SilentlyContinue) {
     Set-Alias -Name vim -Value nvim -Force
