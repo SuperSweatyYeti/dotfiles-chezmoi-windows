@@ -308,7 +308,7 @@
 
 # Packet list hidden column formats (deprecated)
 # List all column formats to hide in the packet list. Deprecated in favor of the index-based preference.
-#gui.column.hidden: 
+gui.column.hidden: 
 
 # Packet list column format
 # Each pair of strings consists of a column title and its format
@@ -321,7 +321,9 @@ gui.column.format:
 	"Destination", "%d",
 	"Protocol", "%p",
 	"Length", "%L",
+	"Calc window size", "%Cus:tcp.window_size:0:U",
 	"TCP Seg Len", "%Cus:tcp.len:0:U",
+	"UDP Seg Len", "%Cus:udp.length:0:U",
 	"Info", "%i"
 
 ####### User Interface: Font ########
@@ -403,7 +405,7 @@ gui.qt.font_name: Consolas,12,-1,5,400,0,0,0,0,0,0,0,0,0,0,1,Regular
 
 # Interface link-layer header types (Ex: en0(1),en1(143),...)
 # A string
-capture.devices_linktypes: \Device\NPF_{37217669-42DA-4657-A55B-0D995D328250}(12)
+capture.devices_linktypes: \Device\NPF_{8BD36176-BE51-41D6-B3FA-F266B7F89EA0}(1),\Device\NPF_{9D4CB81D-E56F-415C-A150-DF9F847F41A6}(1),\Device\NPF_{D493650E-FD6B-4AE7-A0C4-70F844DD7260}(1),\Device\NPF_{C2B3A080-A650-48B3-9A32-4E3CC79DD6F0}(1),\Device\NPF_{F9D17B91-6AAB-405F-B713-84F1E9F01C51}(1),\Device\NPF_{83CB64E6-3A72-4700-AB60-6100CC8882C3}(1),\Device\NPF_{B1ED30BE-4D39-4558-BA49-110E494A62AB}(1),\Device\NPF_{5D53659C-F2A0-444E-A875-B9EAF26A717C}(1),\Device\NPF_{B141B069-CE31-47C8-82FD-B1EEAA504005}(1),\Device\NPF_{3DF54D00-9F6F-4C52-8A50-96B375BB5864}(1),\Device\NPF_{37217669-42DA-4657-A55B-0D995D328250}(12),\Device\NPF_Loopback(0),\Device\NPF_{5CBB23F3-2D44-4C39-B188-A7217038DBB3}(1),ciscodump(147),etwdump(290),sshdump(147),udpdump(252),wifidump(147)
 
 # Interface descriptions (Ex: eth0(eth0 descr),eth1(eth1 descr),...)
 # A string
@@ -419,15 +421,15 @@ capture.devices_linktypes: \Device\NPF_{37217669-42DA-4657-A55B-0D995D328250}(12
 
 # Interface buffer size (Ex: en0(1),en1(143),...)
 # A string
-capture.devices_buffersize: \Device\NPF_{8BD36176-BE51-41D6-B3FA-F266B7F89EA0}(2),\Device\NPF_{9D4CB81D-E56F-415C-A150-DF9F847F41A6}(2),\Device\NPF_{D493650E-FD6B-4AE7-A0C4-70F844DD7260}(2),\Device\NPF_{C2B3A080-A650-48B3-9A32-4E3CC79DD6F0}(2),\Device\NPF_{F9D17B91-6AAB-405F-B713-84F1E9F01C51}(2),\Device\NPF_{B1ED30BE-4D39-4558-BA49-110E494A62AB}(2),\Device\NPF_{5D53659C-F2A0-444E-A875-B9EAF26A717C}(2),\Device\NPF_{B141B069-CE31-47C8-82FD-B1EEAA504005}(2),\Device\NPF_{3DF54D00-9F6F-4C52-8A50-96B375BB5864}(2),\Device\NPF_{37217669-42DA-4657-A55B-0D995D328250}(2),\Device\NPF_{B1549510-CF8D-4303-BD9C-56FEBB126790}(2),\Device\NPF_Loopback(2),\Device\NPF_{5CBB23F3-2D44-4C39-B188-A7217038DBB3}(2),ciscodump(2),etwdump(2),sshdump(2),udpdump(2),wifidump(2)
+capture.devices_buffersize: \Device\NPF_{8BD36176-BE51-41D6-B3FA-F266B7F89EA0}(2),\Device\NPF_{9D4CB81D-E56F-415C-A150-DF9F847F41A6}(2),\Device\NPF_{D493650E-FD6B-4AE7-A0C4-70F844DD7260}(2),\Device\NPF_{C2B3A080-A650-48B3-9A32-4E3CC79DD6F0}(2),\Device\NPF_{F9D17B91-6AAB-405F-B713-84F1E9F01C51}(2),\Device\NPF_{83CB64E6-3A72-4700-AB60-6100CC8882C3}(2),\Device\NPF_{B1ED30BE-4D39-4558-BA49-110E494A62AB}(2),\Device\NPF_{5D53659C-F2A0-444E-A875-B9EAF26A717C}(2),\Device\NPF_{B141B069-CE31-47C8-82FD-B1EEAA504005}(2),\Device\NPF_{3DF54D00-9F6F-4C52-8A50-96B375BB5864}(2),\Device\NPF_{37217669-42DA-4657-A55B-0D995D328250}(2),\Device\NPF_Loopback(2),\Device\NPF_{5CBB23F3-2D44-4C39-B188-A7217038DBB3}(2),ciscodump(2),etwdump(2),sshdump(2),udpdump(2),wifidump(2)
 
 # Interface snap length (Ex: en0(65535),en1(1430),...)
 # A string
-capture.devices_snaplen: \Device\NPF_{8BD36176-BE51-41D6-B3FA-F266B7F89EA0}:0(262144),\Device\NPF_{9D4CB81D-E56F-415C-A150-DF9F847F41A6}:0(262144),\Device\NPF_{D493650E-FD6B-4AE7-A0C4-70F844DD7260}:0(262144),\Device\NPF_{C2B3A080-A650-48B3-9A32-4E3CC79DD6F0}:0(262144),\Device\NPF_{F9D17B91-6AAB-405F-B713-84F1E9F01C51}:0(262144),\Device\NPF_{B1ED30BE-4D39-4558-BA49-110E494A62AB}:0(262144),\Device\NPF_{5D53659C-F2A0-444E-A875-B9EAF26A717C}:0(262144),\Device\NPF_{B141B069-CE31-47C8-82FD-B1EEAA504005}:0(262144),\Device\NPF_{3DF54D00-9F6F-4C52-8A50-96B375BB5864}:0(262144),\Device\NPF_{37217669-42DA-4657-A55B-0D995D328250}:0(262144),\Device\NPF_{B1549510-CF8D-4303-BD9C-56FEBB126790}:0(262144),\Device\NPF_Loopback:0(262144),\Device\NPF_{5CBB23F3-2D44-4C39-B188-A7217038DBB3}:0(262144),ciscodump:0(262144),etwdump:0(262144),sshdump:0(262144),udpdump:0(262144),wifidump:0(262144)
+capture.devices_snaplen: \Device\NPF_{8BD36176-BE51-41D6-B3FA-F266B7F89EA0}:0(262144),\Device\NPF_{9D4CB81D-E56F-415C-A150-DF9F847F41A6}:0(262144),\Device\NPF_{D493650E-FD6B-4AE7-A0C4-70F844DD7260}:0(262144),\Device\NPF_{C2B3A080-A650-48B3-9A32-4E3CC79DD6F0}:0(262144),\Device\NPF_{F9D17B91-6AAB-405F-B713-84F1E9F01C51}:0(262144),\Device\NPF_{83CB64E6-3A72-4700-AB60-6100CC8882C3}:0(262144),\Device\NPF_{B1ED30BE-4D39-4558-BA49-110E494A62AB}:0(262144),\Device\NPF_{5D53659C-F2A0-444E-A875-B9EAF26A717C}:0(262144),\Device\NPF_{B141B069-CE31-47C8-82FD-B1EEAA504005}:0(262144),\Device\NPF_{3DF54D00-9F6F-4C52-8A50-96B375BB5864}:0(262144),\Device\NPF_{37217669-42DA-4657-A55B-0D995D328250}:0(262144),\Device\NPF_Loopback:0(262144),\Device\NPF_{5CBB23F3-2D44-4C39-B188-A7217038DBB3}:0(262144),ciscodump:0(262144),etwdump:0(262144),sshdump:0(262144),udpdump:0(262144),wifidump:0(262144)
 
 # Interface promiscuous mode (Ex: en0(0),en1(1),...)
 # A string
-capture.devices_pmode: \Device\NPF_{8BD36176-BE51-41D6-B3FA-F266B7F89EA0}(1),\Device\NPF_{9D4CB81D-E56F-415C-A150-DF9F847F41A6}(1),\Device\NPF_{D493650E-FD6B-4AE7-A0C4-70F844DD7260}(1),\Device\NPF_{C2B3A080-A650-48B3-9A32-4E3CC79DD6F0}(1),\Device\NPF_{F9D17B91-6AAB-405F-B713-84F1E9F01C51}(1),\Device\NPF_{B1ED30BE-4D39-4558-BA49-110E494A62AB}(1),\Device\NPF_{5D53659C-F2A0-444E-A875-B9EAF26A717C}(1),\Device\NPF_{B141B069-CE31-47C8-82FD-B1EEAA504005}(1),\Device\NPF_{3DF54D00-9F6F-4C52-8A50-96B375BB5864}(1),\Device\NPF_{37217669-42DA-4657-A55B-0D995D328250}(1),\Device\NPF_{B1549510-CF8D-4303-BD9C-56FEBB126790}(1),\Device\NPF_Loopback(1),\Device\NPF_{5CBB23F3-2D44-4C39-B188-A7217038DBB3}(1),ciscodump(1),etwdump(1),sshdump(1),udpdump(1),wifidump(1)
+capture.devices_pmode: \Device\NPF_{8BD36176-BE51-41D6-B3FA-F266B7F89EA0}(1),\Device\NPF_{9D4CB81D-E56F-415C-A150-DF9F847F41A6}(1),\Device\NPF_{D493650E-FD6B-4AE7-A0C4-70F844DD7260}(1),\Device\NPF_{C2B3A080-A650-48B3-9A32-4E3CC79DD6F0}(1),\Device\NPF_{F9D17B91-6AAB-405F-B713-84F1E9F01C51}(1),\Device\NPF_{83CB64E6-3A72-4700-AB60-6100CC8882C3}(1),\Device\NPF_{B1ED30BE-4D39-4558-BA49-110E494A62AB}(1),\Device\NPF_{5D53659C-F2A0-444E-A875-B9EAF26A717C}(1),\Device\NPF_{B141B069-CE31-47C8-82FD-B1EEAA504005}(1),\Device\NPF_{3DF54D00-9F6F-4C52-8A50-96B375BB5864}(1),\Device\NPF_{37217669-42DA-4657-A55B-0D995D328250}(1),\Device\NPF_Loopback(1),\Device\NPF_{5CBB23F3-2D44-4C39-B188-A7217038DBB3}(1),ciscodump(1),etwdump(1),sshdump(1),udpdump(1),wifidump(1)
 
 # Capture in promiscuous mode?
 # true or false (case-insensitive)
@@ -521,7 +523,7 @@ capture.devices_pmode: \Device\NPF_{8BD36176-BE51-41D6-B3FA-F266B7F89EA0}(1),\De
 
 # Remote capture filter
 # A string
-#extcap.ciscodump.remotefilter: deny tcp host 192.168.211.1 any eq 22, deny tcp any eq 22 host 192.168.211.1, deny tcp host fe80::8515:976f:4ff:b649 any eq 22, deny tcp any eq 22 host fe80::8515:976f:4ff:b649, deny tcp host 192.168.229.1 any eq 22, deny tcp any eq 22 host 192.168.229.1, deny tcp host fe80::2089:a5c6:af7d:4cac any eq 22, deny tcp any eq 22 host fe80::2089:a5c6:af7d:4cac, deny tcp host 169.254.239.220 any eq 22, deny tcp any eq 22 host 169.254.239.220, deny tcp host fe80::5d69:97e1:4a8c:38a7 any eq 22, deny tcp any eq 22 host fe80::5d69:97e1:4a8c:38a7, deny tcp host 169.254.192.186 any eq 22, deny tcp any eq 22 host 169.254.192.186, deny tcp host fe80::e135:4349:ca28:673e any eq 22, deny tcp any eq 22 host fe80::e135:4349:ca28:673e, deny tcp host 192.168.56.1 any eq 22, deny tcp any eq 22 host 192.168.56.1, deny tcp host fe80::557f:bdc:3344:aaf0 any eq 22, deny tcp any eq 22 host fe80::557f:bdc:3344:aaf0, deny tcp host 192.168.22.204 any eq 22, deny tcp any eq 22 host 192.168.22.204, deny tcp host fe80::450e:db48:b60e:7eca any eq 22, deny tcp any eq 22 host fe80::450e:db48:b60e:7eca, deny tcp host 100.121.26.21 any eq 22, deny tcp any eq 22 host 100.121.26.21, deny tcp host fe80::ec60:f26b:97da:e00b any eq 22, deny tcp any eq 22 host fe80::ec60:f26b:97da:e00b, deny tcp host fd7a:115c:a1e0::b301:1a15 any eq 22, deny tcp any eq 22 host fd7a:115c:a1e0::b301:1a15, deny tcp host 172.20.255.43 any eq 22, deny tcp any eq 22 host 172.20.255.43, deny tcp host fe80::47bd:958e:b98e:3e4e any eq 22, deny tcp any eq 22 host fe80::47bd:958e:b98e:3e4e, deny tcp host 169.254.80.118 any eq 22, deny tcp any eq 22 host 169.254.80.118, deny tcp host fe80::86a7:4b3f:949:9c98 any eq 22, deny tcp any eq 22 host fe80::86a7:4b3f:949:9c98, permit ip any any
+#extcap.ciscodump.remotefilter: deny tcp host 192.168.211.1 any eq 22, deny tcp any eq 22 host 192.168.211.1, deny tcp host fe80::8515:976f:4ff:b649 any eq 22, deny tcp any eq 22 host fe80::8515:976f:4ff:b649, deny tcp host 192.168.229.1 any eq 22, deny tcp any eq 22 host 192.168.229.1, deny tcp host fe80::2089:a5c6:af7d:4cac any eq 22, deny tcp any eq 22 host fe80::2089:a5c6:af7d:4cac, deny tcp host 169.254.32.47 any eq 22, deny tcp any eq 22 host 169.254.32.47, deny tcp host fe80::a3d6:435:4638:e055 any eq 22, deny tcp any eq 22 host fe80::a3d6:435:4638:e055, deny tcp host 169.254.239.220 any eq 22, deny tcp any eq 22 host 169.254.239.220, deny tcp host fe80::5d69:97e1:4a8c:38a7 any eq 22, deny tcp any eq 22 host fe80::5d69:97e1:4a8c:38a7, deny tcp host 169.254.192.186 any eq 22, deny tcp any eq 22 host 169.254.192.186, deny tcp host fe80::e135:4349:ca28:673e any eq 22, deny tcp any eq 22 host fe80::e135:4349:ca28:673e, deny tcp host 192.168.56.1 any eq 22, deny tcp any eq 22 host 192.168.56.1, deny tcp host fe80::557f:bdc:3344:aaf0 any eq 22, deny tcp any eq 22 host fe80::557f:bdc:3344:aaf0, deny tcp host 192.168.22.204 any eq 22, deny tcp any eq 22 host 192.168.22.204, deny tcp host fe80::450e:db48:b60e:7eca any eq 22, deny tcp any eq 22 host fe80::450e:db48:b60e:7eca, deny tcp host 100.121.26.21 any eq 22, deny tcp any eq 22 host 100.121.26.21, deny tcp host fe80::ec60:f26b:97da:e00b any eq 22, deny tcp any eq 22 host fe80::ec60:f26b:97da:e00b, deny tcp host fd7a:115c:a1e0::b301:1a15 any eq 22, deny tcp any eq 22 host fd7a:115c:a1e0::b301:1a15, deny tcp host 169.254.80.118 any eq 22, deny tcp any eq 22 host 169.254.80.118, deny tcp host fe80::86a7:4b3f:949:9c98 any eq 22, deny tcp any eq 22 host fe80::86a7:4b3f:949:9c98, permit ip any any
 
 # Packets to capture
 # A string
@@ -613,7 +615,7 @@ capture.devices_pmode: \Device\NPF_{8BD36176-BE51-41D6-B3FA-F266B7F89EA0}(1),\De
 
 # Remote capture filter
 # A string
-#extcap.sshdump.remotefilter: not ((host 192.168.211.1 or host fe80::8515:976f:4ff:b649 or host 192.168.229.1 or host fe80::2089:a5c6:af7d:4cac or host 169.254.239.220 or host fe80::5d69:97e1:4a8c:38a7 or host 169.254.192.186 or host fe80::e135:4349:ca28:673e or host 192.168.56.1 or host fe80::557f:bdc:3344:aaf0 or host 192.168.22.204 or host fe80::450e:db48:b60e:7eca or host 100.121.26.21 or host fe80::ec60:f26b:97da:e00b or host fd7a:115c:a1e0::b301:1a15 or host 172.20.255.43 or host fe80::47bd:958e:b98e:3e4e or host 169.254.80.118 or host fe80::86a7:4b3f:949:9c98) and port 22)
+#extcap.sshdump.remotefilter: not ((host 192.168.211.1 or host fe80::8515:976f:4ff:b649 or host 192.168.229.1 or host fe80::2089:a5c6:af7d:4cac or host 169.254.32.47 or host fe80::a3d6:435:4638:e055 or host 169.254.239.220 or host fe80::5d69:97e1:4a8c:38a7 or host 169.254.192.186 or host fe80::e135:4349:ca28:673e or host 192.168.56.1 or host fe80::557f:bdc:3344:aaf0 or host 192.168.22.204 or host fe80::450e:db48:b60e:7eca or host 100.121.26.21 or host fe80::ec60:f26b:97da:e00b or host fd7a:115c:a1e0::b301:1a15 or host 169.254.80.118 or host fe80::86a7:4b3f:949:9c98) and port 22)
 
 # Packets to capture
 # A string

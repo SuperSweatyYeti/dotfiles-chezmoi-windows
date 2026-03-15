@@ -59,7 +59,7 @@ gui.seconds_format: SECONDS
 
 # Zoom level.
 # A decimal number.
-gui.zoom_level: 2
+gui.zoom_level: 0
 
 # Bytes view display type.
 # One of: HEX, BITS, DEC, OCT
@@ -116,15 +116,17 @@ gui.geom.PreferencesDialog.splitter: 000000ff000000010000000200000099000002f501f
 # Packet list column pixel widths.
 # Each pair of strings consists of a column format and its pixel width.
 column.width:
-        %m, 105,
-        %t, 147,
-        %Tt, 98,
-        "%Cus:tcp.time_delta", 151,
+        %m, 97,
+        %t, 149,
+        %Tt, 136,
+        "%Cus:tcp.time_delta", 207,
         %s, 171,
         %d, 173,
-        %p, 127,
-        %L, 86,
-        "%Cus:tcp.len", 104,
+        %p, 91,
+        %L, 87,
+        "%Cus:tcp.window_size", 188,
+        "%Cus:tcp.len", 125,
+        "%Cus:udp.length", 138,
         %i, 1006
 
 # Open conversation dialog tabs.
