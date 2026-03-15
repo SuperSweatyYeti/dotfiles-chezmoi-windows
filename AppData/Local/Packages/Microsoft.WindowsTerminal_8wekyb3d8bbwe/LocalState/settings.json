@@ -12,6 +12,10 @@
             "keys": "ctrl+shift+["
         },
         {
+            "id": "Terminal.NextTab",
+            "keys": "ctrl+shift+]"
+        },
+        {
             "id": "User.sendInput.42123734",
             "keys": "ctrl+n"
         },
@@ -34,6 +38,7 @@
     {
         "defaults": 
         {
+            "cursorShape": "emptyBox",
             "font": 
             {
                 "face": "Hack Nerd Font"
