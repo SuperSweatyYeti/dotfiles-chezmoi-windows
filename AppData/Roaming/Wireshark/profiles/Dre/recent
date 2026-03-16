@@ -95,19 +95,19 @@ gui.show_bytes_show: ASCII
 
 # Main window upper (or leftmost) pane size.
 # Decimal number.
-gui.geometry_main_upper_pane: 403
+gui.geometry_main_upper_pane: 485
 
 # Main window middle pane size.
 # Decimal number.
-gui.geometry_main_lower_pane: 909
+gui.geometry_main_lower_pane: 717
 
 # Main window master splitter state.
 # Hex byte string.
-gui.geometry_main_master_split: 000000ff0000000100000002000001990000019900ffffffff010000000200
+gui.geometry_main_master_split: 000000ff0000000100000002000001ba0000016900ffffffff010000000200
 
 # Main window extra splitter state.
 # Hex byte string.
-gui.geometry_main_extra_split: 000000ff0000000100000002000003620000036200ffffffff010000000100
+gui.geometry_main_extra_split: 000000ff0000000100000002000003820000039700ffffffff010000000100
 
 # Splitter state of PreferencesDialog window.
 # Qt Splitter state (hex byte string).
@@ -116,15 +116,15 @@ gui.geom.PreferencesDialog.splitter: 000000ff000000010000000200000099000002f501f
 # Packet list column pixel widths.
 # Each pair of strings consists of a column format and its pixel width.
 column.width:
-        %m, 97,
+        %m, 78,
         %t, 149,
         %Tt, 136,
-        "%Cus:tcp.time_delta", 207,
-        %s, 171,
-        %d, 173,
-        %p, 91,
+        "%Cus:tcp.time_delta", 174,
+        %s, 163,
+        %d, 162,
+        %p, 87,
         %L, 87,
-        "%Cus:tcp.window_size", 188,
+        "%Cus:tcp.window_size", 164,
         "%Cus:tcp.len", 125,
         "%Cus:udp.length", 138,
         %i, 1006
