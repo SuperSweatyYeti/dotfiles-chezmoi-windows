@@ -5,5 +5,4 @@
 !^m::
 {
     Send("{Volume_Mute}")
-    Run("nircmd.exe mutesysvolume 2 microphone")
 }

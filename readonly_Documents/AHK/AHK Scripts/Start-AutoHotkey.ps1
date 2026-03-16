@@ -56,5 +56,3 @@ if (-not $ahkFiles -and -not $shortcuts) {
 } else {
     Write-Host "All AutoHotkey scripts started." -ForegroundColor Green
 }
-
-Read-Host "wait"
