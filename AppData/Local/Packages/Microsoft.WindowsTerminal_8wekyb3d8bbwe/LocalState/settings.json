@@ -12,12 +12,12 @@
             "keys": "ctrl+shift+["
         },
         {
-            "id": "Terminal.NextTab",
-            "keys": "ctrl+shift+]"
-        },
-        {
             "id": "User.sendInput.42123734",
             "keys": "ctrl+n"
+        },
+        {
+            "id": "Terminal.NextTab",
+            "keys": "ctrl+shift+]"
         },
         {
             "id": "Terminal.ToggleCommandPalette",
@@ -71,6 +71,19 @@
                 "hidden": false,
                 "name": "Debian",
                 "source": "Microsoft.WSL"
+            },
+            {
+                "colorScheme": "Ubuntu-ColorScheme",
+                "commandline": "ubuntu.exe",
+                "font": 
+                {
+                    "size": 13
+                },
+                "guid": "{8af580e5-6f1c-45e5-a7d4-947a3a35bcc1}",
+                "hidden": false,
+                "icon": "https://assets.ubuntu.com/v1/49a1a858-favicon-32x32.png",
+                "name": "Ubuntu",
+                "tabTitle": "Ubuntu"
             },
             {
                 "guid": "{51342ecc-d931-559a-afc0-3d409eb2f298}",
