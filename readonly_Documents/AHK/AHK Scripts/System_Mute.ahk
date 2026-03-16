@@ -1,10 +1,9 @@
-#NoEnv ; Recommended for Performance and compat with future AHK releases
-SendMode Input ; Recommended for new scripts
-SetWorkingDir %A_ScriptDir%
+#Requires AutoHotkey >=v2.0
+#SingleInstance Force
 
-; Toggle with ctrl + alt + m
+; Toggle speakers + microphone mute with Ctrl+Alt+M
 !^m::
-
-	Send {Volume_Mute}
-	Run nircmd.exe mutesysvolume 2 microphone
-	Return
+{
+    Send("{Volume_Mute}")
+    Run("nircmd.exe mutesysvolume 2 microphone")
+}
