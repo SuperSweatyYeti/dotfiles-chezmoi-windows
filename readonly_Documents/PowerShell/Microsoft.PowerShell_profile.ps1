@@ -27,7 +27,7 @@ if (Get-Command chezmoi.exe -ErrorAction SilentlyContinue) {
            return
         }
         git -C $chezmoi add -A
-        git -C $chezmoi commit -m "update $(Get-Date -Format 'yyyy-MM-dd')"
+        git -C $chezmoi commit -m "update $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
         git -C $chezmoi push --force
     }
 }
