@@ -14,6 +14,15 @@ if (Get-Command chezmoi.exe -ErrorAction SilentlyContinue) {
            Set-Location $env:HOMEPATH\.local\share\chezmoi
         }
     }
+    function cmoisync {
+        $chezmoi = "$env:HOMEPATH\.local\share\chezmoi"
+        if (-not (Test-Path -Path $chezmoi)) { 
+           return
+        }
+        git -C $chezmoi add -A
+        git -C $chezmoi commit -m "update $(Get-Date -Format 'yyyy-MM-dd')"
+        git -C $chezmoi push --force
+    }
 }
 
 # Use wsl ssh instead of windows ssh if wsl distro exists

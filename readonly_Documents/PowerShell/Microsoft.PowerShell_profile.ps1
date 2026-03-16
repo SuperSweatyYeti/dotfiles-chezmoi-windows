@@ -21,6 +21,15 @@ if (Get-Command chezmoi.exe -ErrorAction SilentlyContinue) {
            Set-Location $env:HOMEPATH\.local\share\chezmoi
         }
     }
+    function cmoisync {
+        $chezmoi = "$env:HOMEPATH\.local\share\chezmoi"
+        if (-not (Test-Path -Path $chezmoi)) { 
+           return
+        }
+        git -C $chezmoi add -A
+        git -C $chezmoi commit -m "update $(Get-Date -Format 'yyyy-MM-dd')"
+        git -C $chezmoi push --force
+    }
 }
 
 # Use wsl ssh instead of windows ssh if wsl distro exists
@@ -101,8 +110,6 @@ function prompt {
         $branch = git branch --show-current 2>$null
         if ($branch) {
             $dirty = git status --porcelain 2>$null
-            $branchColor = if ($dirty) { "Yellow" } else { "Green" }
-            Write-Host "  $branch" -NoNewline -ForegroundColor $branchColor
         }
 
         # Chezmoi status — only when toggled on
