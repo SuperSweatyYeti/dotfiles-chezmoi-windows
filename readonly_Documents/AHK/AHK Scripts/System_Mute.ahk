@@ -7,4 +7,5 @@
     Send("{Volume_Mute}")
 }
 
-; Need version from laptop still
+; Need version from laptop MGLiquid
+; SHould add mic and speaker icons
