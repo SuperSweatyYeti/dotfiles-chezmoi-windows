@@ -86,14 +86,11 @@ $global:ChezmoiWatchedFolders = @(
     # "$env:USERPROFILE\.config\some-app"
 )
 
-# -- Prompt Cache (all zero-cost reads) --------------------------------
+# -- Prompt Cache (chezmoi only -- git runs synchronously) -------------
 $global:ChezmoiUnmanagedCache = @()
 $global:ChezmoiStatusCache = $null
-$global:GitBranchCache = $null
-$global:GitDirtyCache = $false
-$global:GitCwd = $null
 
-# -- Background Job State ----------------------------------------------
+# -- Background Job State (chezmoi only) -------------------------------
 $global:PromptBgJob = $null
 $global:PromptLastCheck = [datetime]::MinValue
 $global:PromptCheckInterval = 30  # seconds between background checks
@@ -101,8 +98,8 @@ $global:PromptCheckInterval = 30  # seconds between background checks
 function Start-PromptBgCheck {
     <#
     .SYNOPSIS
-        Kicks off a single background job that checks git status,
-        chezmoi status, and chezmoi unmanaged -- all non-blocking.
+        Kicks off a background job for chezmoi status and unmanaged checks.
+        Git is NOT included -- it runs synchronously in the prompt.
     #>
     if ($global:PromptBgJob -and $global:PromptBgJob.State -eq 'Running') {
         return
@@ -118,49 +115,31 @@ function Start-PromptBgCheck {
     }
 
     $folders = $global:ChezmoiWatchedFolders
-    $cwd = (Get-Location).Path
-    $hasChezmoi = [bool](Get-Command chezmoi.exe -ErrorAction SilentlyContinue)
-    $hasGit = [bool](Get-Command git -ErrorAction SilentlyContinue)
 
     $global:PromptBgJob = Start-Job -ScriptBlock {
-        param($watchedFolders, $workingDir, $hasChezmoi, $hasGit)
+        param($watchedFolders)
 
         $result = @{
-            GitBranch   = $null
-            GitDirty    = $false
-            GitCwd      = $workingDir
             CzStatus    = $null
             CzUnmanaged = @()
         }
 
-        # -- Git --
-        if ($hasGit) {
-            $result.GitBranch = git -C $workingDir branch --show-current 2>$null
-            if ($result.GitBranch) {
-                $porcelain = git -C $workingDir status --porcelain 2>$null
-                $result.GitDirty = [bool]$porcelain
-            }
-        }
+        $result.CzStatus = chezmoi status 2>$null
 
-        # -- Chezmoi --
-        if ($hasChezmoi) {
-            $result.CzStatus = chezmoi status 2>$null
-
-            foreach ($folder in $watchedFolders) {
-                if (-not (Test-Path -LiteralPath $folder)) { continue }
-                $files = chezmoi unmanaged $folder 2>$null
-                if ($files) { $result.CzUnmanaged += $files }
-            }
+        foreach ($folder in $watchedFolders) {
+            if (-not (Test-Path -LiteralPath $folder)) { continue }
+            $files = chezmoi unmanaged $folder 2>$null
+            if ($files) { $result.CzUnmanaged += $files }
         }
 
         return $result
-    } -ArgumentList $folders, $cwd, $hasChezmoi, $hasGit
+    } -ArgumentList (,$folders)
 }
 
 function Receive-PromptBgCheck {
     <#
     .SYNOPSIS
-        Collects results from a completed background job into cache variables.
+        Collects chezmoi results from a completed background job into cache.
     #>
     if (-not $global:PromptBgJob) { return }
     if ($global:PromptBgJob.State -ne 'Completed') { return }
@@ -171,9 +150,6 @@ function Receive-PromptBgCheck {
     $global:PromptLastCheck = Get-Date
 
     if ($result) {
-        $global:GitBranchCache = $result.GitBranch
-        $global:GitDirtyCache = $result.GitDirty
-        $global:GitCwd = $result.GitCwd
         $global:ChezmoiStatusCache = $result.CzStatus
         $global:ChezmoiUnmanagedCache = if ($result.CzUnmanaged) { $result.CzUnmanaged } else { @() }
     }
@@ -282,7 +258,7 @@ function prompt {
         $path = $executionContext.SessionState.Path.CurrentLocation.Path
         $path = $path -replace '\\', '/'
 
-        # Collect any finished background results (instant)
+        # Collect any finished chezmoi background results (instant)
         Receive-PromptBgCheck
 
         Write-Host ""
@@ -292,17 +268,18 @@ function prompt {
         Write-Host "$host_name" -NoNewline -ForegroundColor Magenta
         Write-Host " $path" -NoNewline -ForegroundColor Blue
 
-        # Git -- from cache, only show if cache matches current directory
-        $currentPath = (Get-Location).Path
-        if ($global:GitBranchCache -and $global:GitCwd -eq $currentPath) {
-            $branchColor = if ($global:GitDirtyCache) { "Yellow" } else { "Green" }
-            Write-Host "  $($global:GitBranchCache)" -NoNewline -ForegroundColor $branchColor
-            if ($global:GitDirtyCache) {
+        # Git -- synchronous (fast enough for most repos)
+        $branch = git branch --show-current 2>$null
+        if ($branch) {
+            $dirty = git status --porcelain 2>$null
+            $branchColor = if ($dirty) { "Yellow" } else { "Green" }
+            Write-Host "  $branch" -NoNewline -ForegroundColor $branchColor
+            if ($dirty) {
                 Write-Host " X" -NoNewline -ForegroundColor Red
             }
         }
 
-        # Chezmoi -- from cache
+        # Chezmoi -- from background cache (zero cost)
         if ($global:ChezmoiCheck) {
             if ($global:ChezmoiStatusCache) {
                 Write-Host " cmoi +/-" -NoNewline -ForegroundColor Yellow
@@ -317,7 +294,7 @@ function prompt {
         Write-Host "-" -NoNewline -ForegroundColor White
         Write-Host ">" -NoNewline -ForegroundColor $promptColor
 
-        # Fire off background check for next prompt (non-blocking)
+        # Fire off chezmoi background check for next prompt (non-blocking)
         Start-PromptBgCheck
 
         return " "
