@@ -27,6 +27,11 @@ if (Get-Command chezmoi.exe -ErrorAction SilentlyContinue) {
            return
         }
         git -C $chezmoi add -A
+        $status = git -C $chezmoi status --porcelain
+        if (-not $status) {
+            Write-Host "cmoisync: nothing to commit, already up to date." -ForegroundColor DarkGray
+            return
+        }
         git -C $chezmoi commit -m "update $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
         git -C $chezmoi push --force
     }
