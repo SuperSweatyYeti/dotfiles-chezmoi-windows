@@ -140,19 +140,25 @@ function Receive-PromptBgCheck {
     <#
     .SYNOPSIS
         Collects chezmoi results from a completed background job into cache.
+        Also cleans up failed/stopped jobs so the next cycle can retry.
     #>
     if (-not $global:PromptBgJob) { return }
-    if ($global:PromptBgJob.State -ne 'Completed') { return }
 
-    $result = Receive-Job $global:PromptBgJob
+    $state = $global:PromptBgJob.State
+    if ($state -eq 'Running') { return }
+
+    if ($state -eq 'Completed') {
+        $result = Receive-Job $global:PromptBgJob
+        if ($result) {
+            $global:ChezmoiStatusCache = $result.CzStatus
+            $global:ChezmoiUnmanagedCache = if ($result.CzUnmanaged) { $result.CzUnmanaged } else { @() }
+        }
+    }
+
+    # Clean up regardless of outcome (Completed, Failed, Stopped, etc.)
     Remove-Job $global:PromptBgJob -Force -ErrorAction SilentlyContinue
     $global:PromptBgJob = $null
     $global:PromptLastCheck = Get-Date
-
-    if ($result) {
-        $global:ChezmoiStatusCache = $result.CzStatus
-        $global:ChezmoiUnmanagedCache = if ($result.CzUnmanaged) { $result.CzUnmanaged } else { @() }
-    }
 }
 
 # -- Synchronous helpers for explicit commands -------------------------
@@ -303,3 +309,4 @@ function prompt {
         return "-> "
     }
 }
+
