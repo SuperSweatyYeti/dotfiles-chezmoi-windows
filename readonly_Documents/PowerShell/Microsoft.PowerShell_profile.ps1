@@ -83,6 +83,134 @@ Set-PSReadLineOption -Colors @{
   InlinePrediction   = '#6c6c6c'  # dim grey → clearly distinct from typed text
 }
 
+# ── Chezmoi Unmanaged File Tracking ──────────────────────────────────
+# Add folders you want to watch for new unmanaged files here.
+# Use full paths (supports ~ expansion via $env:USERPROFILE).
+$global:ChezmoiWatchedFolders = @(
+    "$env:USERPROFILE\.config\nvim"
+    "$env:USERPROFILE\.config\yazi"
+    # Add more folders here:
+    # "$env:USERPROFILE\.config\some-app"
+)
+
+function Get-ChezmoiUnmanaged {
+    <#
+    .SYNOPSIS
+        Checks watched folders for files not tracked by chezmoi.
+    .DESCRIPTION
+        Iterates through $global:ChezmoiWatchedFolders and runs
+        'chezmoi unmanaged' scoped to each one. Returns a list of
+        unmanaged file paths, or an empty array if everything is tracked.
+    .EXAMPLE
+        Get-ChezmoiUnmanaged
+        # Returns: @("~/.config/nvim/plugin/new-plugin.lua", ...)
+    #>
+    if (-not (Get-Command chezmoi.exe -ErrorAction SilentlyContinue)) {
+        return @()
+    }
+
+    $allUnmanaged = @()
+    foreach ($folder in $global:ChezmoiWatchedFolders) {
+        if (-not (Test-Path -LiteralPath $folder)) {
+            continue
+        }
+        $result = chezmoi unmanaged $folder 2>$null
+        if ($result) {
+            # chezmoi unmanaged returns paths relative to home dir
+            $allUnmanaged += $result
+        }
+    }
+    return $allUnmanaged
+}
+
+function cmoistatus {
+    <#
+    .SYNOPSIS
+        Shows chezmoi status plus any unmanaged files in watched folders.
+    .DESCRIPTION
+        Runs 'chezmoi status' to show tracked file changes, then checks
+        all $global:ChezmoiWatchedFolders for unmanaged files and lists them.
+    .EXAMPLE
+        cmoistatus
+    #>
+    if (-not (Get-Command chezmoi.exe -ErrorAction SilentlyContinue)) {
+        Write-Warning "cmoistatus: chezmoi not found in PATH."
+        return
+    }
+
+    # 1. Normal chezmoi status
+    Write-Host "── Chezmoi Status ──" -ForegroundColor Cyan
+    $czStatus = chezmoi status 2>$null
+    if ($czStatus) {
+        $czStatus | ForEach-Object { Write-Host $_ }
+    } else {
+        Write-Host "  (no changes)" -ForegroundColor DarkGray
+    }
+
+    Write-Host ""
+
+    # 2. Unmanaged files in watched folders
+    Write-Host "── Unmanaged Files in Watched Folders ──" -ForegroundColor Cyan
+    $unmanaged = Get-ChezmoiUnmanaged
+    if ($unmanaged.Count -gt 0) {
+        foreach ($file in $unmanaged) {
+            Write-Host "  + $file" -ForegroundColor Red
+        }
+        Write-Host ""
+        Write-Host "  $($unmanaged.Count) unmanaged file(s) found." -ForegroundColor Yellow
+        Write-Host "  Run " -NoNewline -ForegroundColor DarkGray
+        Write-Host "cmoireadd" -NoNewline -ForegroundColor Green
+        Write-Host " to re-add tracked changes and add these files." -ForegroundColor DarkGray
+    } else {
+        Write-Host "  (all watched folders fully tracked)" -ForegroundColor DarkGray
+    }
+}
+
+function cmoireadd {
+    <#
+    .SYNOPSIS
+        Re-adds tracked files and adds any unmanaged files in watched folders.
+    .DESCRIPTION
+        Runs 'chezmoi re-add' to update all already-tracked files, then finds
+        unmanaged files in $global:ChezmoiWatchedFolders and runs 'chezmoi add'
+        on each one to start tracking them.
+    .EXAMPLE
+        cmoireadd
+    #>
+    if (-not (Get-Command chezmoi.exe -ErrorAction SilentlyContinue)) {
+        Write-Warning "cmoireadd: chezmoi not found in PATH."
+        return
+    }
+
+    # 1. Normal chezmoi re-add
+    Write-Host "── Re-adding tracked files ──" -ForegroundColor Cyan
+    chezmoi re-add
+    Write-Host "  Done." -ForegroundColor Green
+
+    Write-Host ""
+
+    # 2. Add unmanaged files from watched folders
+    Write-Host "── Adding unmanaged files from watched folders ──" -ForegroundColor Cyan
+    $unmanaged = Get-ChezmoiUnmanaged
+    if ($unmanaged.Count -gt 0) {
+        $added = 0
+        foreach ($file in $unmanaged) {
+            $fullPath = Join-Path $env:USERPROFILE $file
+            if (Test-Path -LiteralPath $fullPath) {
+                Write-Host "  + $file" -ForegroundColor Green
+                chezmoi add $fullPath
+                $added++
+            } else {
+                Write-Host "  ✗ $file (not found, skipping)" -ForegroundColor Yellow
+            }
+        }
+        Write-Host ""
+        Write-Host "  $added file(s) added to chezmoi." -ForegroundColor Green
+    } else {
+        Write-Host "  (no unmanaged files found)" -ForegroundColor DarkGray
+    }
+}
+
 # Custom Prompt
 $global:ChezmoiCheck = $true
 
@@ -117,6 +245,12 @@ function prompt {
             $czStatus = chezmoi status 2>$null
             if ($czStatus) {
                 Write-Host " 🏠±" -NoNewline -ForegroundColor Yellow
+            }
+
+            # Check watched folders for unmanaged files
+            $unmanaged = Get-ChezmoiUnmanaged
+            if ($unmanaged.Count -gt 0) {
+                Write-Host " 📁+$($unmanaged.Count)" -NoNewline -ForegroundColor Red
             }
         }
 
