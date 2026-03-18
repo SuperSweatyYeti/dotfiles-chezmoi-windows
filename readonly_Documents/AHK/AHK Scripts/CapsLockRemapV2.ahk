@@ -59,7 +59,7 @@ $CapsLock up:: {
     global isRemapEnabled
     
     if (!isRemapEnabled) {
-        ShowTooltip("Remapping disabled - CapsLock works normally")
+        ShowOSD("CapsLock State", "⚠ Remapping Disabled")
         return
     }
     
@@ -67,7 +67,7 @@ $CapsLock up:: {
     newState := !GetKeyState("CapsLock", "T")
     SetCapsLockState newState
     
-    ShowTooltip("CapsLock: " . (newState ? "ON" : "OFF"))
+    ShowOSD("CapsLock", (newState ? "✓ ON" : "✗ OFF"))
 }
 
 ; Ctrl+1 - Toggle entire remapping on/off
@@ -83,17 +83,17 @@ $CapsLock up:: {
     ; Update CapsLock behavior
     if (isRemapEnabled) {
         SetCapsLockState "AlwaysOff"
-        ShowTooltip("CapsLock → Ctrl: ENABLED", 3000)
+        ShowOSD("CapsLock → Ctrl", "✓ ENABLED")
     } else {
         SetCapsLockState "Off"
-        ShowTooltip("CapsLock → Ctrl: DISABLED`nCapsLock works normally", 3000)
+        ShowOSD("CapsLock → Ctrl", "✗ DISABLED")
     }
 }
 
 ; Ctrl+Shift+Esc - Emergency cleanup
 ^+Esc:: {
     CleanupKeys()
-    ShowTooltip("Emergency cleanup: All keys released", 2000)
+    ShowOSD("Emergency Cleanup", "✓ Complete")
 }
 
 ; ====== Helper Functions ======
@@ -110,10 +110,126 @@ CleanupKeys() {
     ctrlPressed := false
 }
 
-; Show tooltip with auto-hide timer
-ShowTooltip(message, duration := 2000) {
-    ToolTip message
-    SetTimer () => ToolTip(), -duration
+; Global OSD state
+gFadeAlpha := 245
+
+; Show OSD with status message
+ShowOSD(title, status, duration := 1500) {
+    static osd := ""
+    static textCtrl := ""
+    static statusCtrl := ""
+
+    ; Called with "" to close/reset
+    if (title = "") {
+        if (osd) {
+            try osd.Destroy()
+            osd := ""
+            textCtrl := ""
+            statusCtrl := ""
+        }
+        return
+    }
+
+    ; Close existing OSD
+    if (osd) {
+        try {
+            osd.Destroy()
+            SetTimer(FadeOSD, 0)
+        }
+    }
+
+    ; Reset fade alpha
+    global gFadeAlpha
+    gFadeAlpha := 245
+
+    w := 300
+    h := 100
+    
+    CoordMode("Mouse", "Screen")
+    MouseGetPos(&mx, &my)
+    monCount := MonitorGetCount()
+    monIdx := 1
+    loop monCount {
+        MonitorGet(A_Index, &l, &t, &r, &b)
+        if (mx >= l && mx < r && my >= t && my < b) {
+            monIdx := A_Index
+            break
+        }
+    }
+
+    MonitorGetWorkArea(monIdx, &mL, &mT, &mR, &mB)
+    x := mL + (mR - mL - w) // 2
+    y := mB - h - 60
+
+    osd := Gui("+AlwaysOnTop -Caption +ToolWindow +E0x20")
+    WinSetTransparent(245, osd)
+
+    ; Detect light/dark theme
+    try isDark := !RegRead("HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize", "AppsUseLightTheme")
+    catch
+        isDark := true
+
+    if (isDark) {
+        bgColor := "111111"
+        fontColor := "White"
+    } else {
+        bgColor := "F0F0F0"
+        fontColor := "000000"
+    }
+
+    osd.BackColor := bgColor
+
+    ; Get Windows accent color
+    accentRaw := RegRead("HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\DWM", "AccentColor")
+    r := accentRaw & 0xFF
+    g := (accentRaw >> 8) & 0xFF
+    b := (accentRaw >> 16) & 0xFF
+    accentHex := Format("{:02X}{:02X}{:02X}", r, g, b)
+
+    ; Title
+    osd.SetFont("s14 bold c" . accentHex, "Segoe UI")
+    textCtrl := osd.Add("Text", "x20 y15 w260 Center", title)
+
+    ; Status
+    osd.SetFont("s20 bold c" . fontColor, "Segoe UI")
+    statusCtrl := osd.Add("Text", "x20 y45 w260 Center", status)
+
+    osd.Show("x" . x . " y" . y . " w" . w . " h" . h . " NoActivate")
+
+    ; Round the OSD corners
+    WinGetPos(,, &winW, &winH, osd)
+    hRgn := DllCall("CreateRoundRectRgn", "Int", 0, "Int", 0, "Int", winW + 1, "Int", winH + 1, "Int", 20, "Int", 20, "Ptr")
+    DllCall("SetWindowRgn", "Ptr", osd.Hwnd, "Ptr", hRgn, "Int", true)
+
+    ; Auto-hide with fade
+    SetTimer(FadeOSD, -duration)
+}
+
+FadeOSD() {
+    SetTimer(DoFade, 30)
+}
+
+DoFade() {
+    global gFadeAlpha
+
+    gFadeAlpha -= 15
+    if (gFadeAlpha <= 0) {
+        SetTimer(DoFade, 0)
+        gFadeAlpha := 245
+        ShowOSD("", "")
+        return
+    }
+
+    ; Apply to OSD window
+    try {
+        for hwnd in WinGetList("ahk_class AutoHotkeyGUI") {
+            WinSetTransparent(gFadeAlpha, hwnd)
+        }
+    } catch {
+        SetTimer(DoFade, 0)
+        gFadeAlpha := 245
+        ShowOSD("", "")
+    }
 }
 
 ; Periodic watchdog to detect and fix stuck Ctrl state
@@ -140,7 +256,7 @@ OnExit ExitCleanup
 ExitCleanup(ExitReason, ExitCode) {
     ; Clean up before script exits
     CleanupKeys()
-    ToolTip()
+    ShowOSD("", "")  ; Close OSD
     SetCapsLockState "Off"
 }
 
@@ -148,4 +264,4 @@ ExitCleanup(ExitReason, ExitCode) {
 
 ; Initialize CapsLock state
 SetCapsLockState "AlwaysOff"
-ShowTooltip("CapsLock → Ctrl remapping loaded`nCtrl+1 to toggle | Ctrl+` for CapsLock", 3000)
+ShowOSD("CapsLock → Ctrl", "✓ Loaded")
