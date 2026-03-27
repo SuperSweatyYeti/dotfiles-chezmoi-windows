@@ -11,6 +11,19 @@ if (Get-Command lazygit.exe -ErrorAction SilentlyContinue) {
     Set-Alias -Name lg -Value lazygit 
 }
 
+# ob sync commands
+if (Get-Command ob -ErrorAction SilentlyContinue) {
+    function ob-sync-list-remote {
+        ob sync-list-remote
+    }
+    function ob-sync {
+        ob sync
+    }
+    function ob-sync-cont {
+        ob sync --continuous
+    }
+}
+
 if (Get-Command chezmoi.exe -ErrorAction SilentlyContinue) {
     Set-Alias -Name cmoi -Value chezmoi -Force
     function cmoicd {
