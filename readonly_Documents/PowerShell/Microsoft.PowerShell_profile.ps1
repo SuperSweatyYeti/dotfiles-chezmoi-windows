@@ -23,8 +23,8 @@ if (Get-Command ob -ErrorAction SilentlyContinue) {
         ob sync --continuous
     }
     function ob-sync-config-custom {
-        ob sync-config --file-types image,audio,video,pdf,unsupported
-        ob sync-config --configs app,appearance,appearance-data,hotkey,core-plugin,core-plugin-data,community-plugin,community-plugin-data
+        ob sync-config --file-types "image,audio,video,pdf,unsupported"
+        ob sync-config --configs "app,appearance,appearance-data,hotkey,core-plugin,core-plugin-data,community-plugin,community-plugin-data"
     }
 }
 
@@ -54,16 +54,22 @@ if (Get-Command chezmoi.exe -ErrorAction SilentlyContinue) {
     }
 }
 
+
 # Use wsl ssh instead of windows ssh if wsl distro exists
-function ssh {
-    if (Get-Command wsl.exe -ErrorAction SilentlyContinue) {
-        $wslSshCheck = wsl.exe which ssh 2>$null
-        if ($wslSshCheck) {
+if (Get-Command wsl.exe -ErrorAction SilentlyContinue)
+{
+    $wslSshCheck = wsl.exe which ssh 2>$null
+    if ($wslSshCheck)
+    {
+        function ssh
+        {
             wsl.exe ssh @args
-            return
         }
     }
-    & ssh.exe @args
+    else {
+    # Do nothing
+    # Falback to windows ssh
+    }
 }
 
 function cdy {
