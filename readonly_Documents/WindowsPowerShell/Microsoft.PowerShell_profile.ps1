@@ -22,6 +22,10 @@ if (Get-Command ob -ErrorAction SilentlyContinue) {
     function ob-sync-cont {
         ob sync --continuous
     }
+    function ob-sync-config-custom {
+        ob sync-config --file-types image,audio,video,pdf,unsupported
+        ob sync-config --configs app,appearance,appearance-data,hotkey,core-plugin,core-plugin-data,community-plugin,community-plugin-data
+    }
 }
 
 if (Get-Command chezmoi.exe -ErrorAction SilentlyContinue) {
