@@ -68,6 +68,11 @@ if (Get-Command chezmoi.exe -ErrorAction SilentlyContinue)
     }
 }
 
+# Normal windows ssh
+function sshnt {
+    & 'C:\Windows\System32\OpenSSH\ssh.exe' @args
+}
+
 # Use wsl ssh instead of windows ssh if wsl distro exists
 if (Get-Command wsl.exe -ErrorAction SilentlyContinue)
 {
@@ -84,6 +89,7 @@ if (Get-Command wsl.exe -ErrorAction SilentlyContinue)
     # Falback to windows ssh
     }
 }
+
 
 function cdy
 {
