@@ -15,8 +15,15 @@ function IsProcessRunning {
     return $runningProcesses.Count -gt 0
 }
 
+# Scripts to exclude from auto-start
+$excludeScripts = @(
+    "BlueToothToggle.ahk",
+    "screenshot.ahk"
+)
+
 # Find all .ahk files and .lnk files that point to .ahk files
-$ahkFiles = Get-ChildItem -Path $startupFolder -Filter "*.ahk" -ErrorAction SilentlyContinue
+$ahkFiles = Get-ChildItem -Path $startupFolder -Filter "*.ahk" -ErrorAction SilentlyContinue |
+    Where-Object { $_.Name -notin $excludeScripts }
 $shortcuts = Get-ChildItem -Path $startupFolder -Filter "*.lnk" -ErrorAction SilentlyContinue
 
 # Start .ahk files directly
