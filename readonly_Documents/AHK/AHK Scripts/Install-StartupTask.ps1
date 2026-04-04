@@ -8,10 +8,13 @@
 $taskName = "StartAutoHotkeyScriptsElevated"
 $scriptPath = Join-Path $PSScriptRoot "Start-AutoHotkey.ps1"
 
+# Prefer pwsh (PowerShell 7+), fall back to powershell.exe (Windows PowerShell 5.1)
+$psExe = if (Get-Command pwsh -ErrorAction SilentlyContinue) { "pwsh" } else { "powershell" }
+
 # Must run as admin to create the task
 if (-not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
     Write-Host "Elevating to administrator..." -ForegroundColor Yellow
-    Start-Process -FilePath "pwsh" -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`"" -Verb RunAs
+    Start-Process -FilePath $psExe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`"" -Verb RunAs
     exit
 }
 
@@ -24,7 +27,7 @@ if ($existing) {
 
 # Build the task
 $action = New-ScheduledTaskAction `
-    -Execute "pwsh" `
+    -Execute $psExe `
     -Argument "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$scriptPath`"" `
     -WorkingDirectory $PSScriptRoot
 
