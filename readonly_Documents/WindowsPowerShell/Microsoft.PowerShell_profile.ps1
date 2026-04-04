@@ -129,7 +129,7 @@ function Connect-ActiveSerialPort {
         return
     }
 
-    Write-Verbose "Found: $($match.Name) — Status: $($match.Status)"
+    Write-Verbose "Found: $($match.Name) - Status: $($match.Status)"
 
     $port = [System.IO.Ports.SerialPort]::new()
     $port.PortName     = $ComPort
