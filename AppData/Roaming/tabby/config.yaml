@@ -41,6 +41,7 @@ profiles:
       env:
         WT_SESSION: 0
       args: []
+      cwd: C:/Users/Andre
     id: local:custom:PowerShell:4cb8023f-484e-4430-a499-41a2c389a3d4
     terminalColorScheme:
       name: TokyoNight
@@ -476,7 +477,6 @@ clickableLinks: {}
 accessibility: {}
 appearance: {}
 hacks: {}
-pluginBlacklist: []
 providerBlacklist: []
 commandBlacklist: []
 enableAnalytics: false
@@ -484,3 +484,5 @@ profileDefaults:
   ssh:
     disableDynamicTitle: true
 profileBlacklist: []
+enableWelcomeTab: false
+pluginBlacklist: []
