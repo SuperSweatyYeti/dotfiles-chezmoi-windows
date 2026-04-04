@@ -1,6 +1,12 @@
 ﻿#Requires AutoHotkey >=v2.0
 #SingleInstance Force
 
+; Run as admin to work with elevated windows
+if !A_IsAdmin {
+    try Run '*RunAs "' A_ScriptFullPath '"'
+    ExitApp
+}
+
 /*
     Volume control hotkeys
     Alt+/  = Volume Up (+2)       Alt+.  = Volume Down (-2)

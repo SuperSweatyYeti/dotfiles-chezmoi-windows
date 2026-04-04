@@ -4,7 +4,7 @@
 Write-Host "Starting AutoHotkey scripts from startup folder..." -ForegroundColor Yellow
 
 # Get the startup folder path
-$startupFolder = [System.IO.Path]::Combine($env:APPDATA, "Microsoft\Windows\Start Menu\Programs\Startup")
+$startupFolder = [System.IO.Path]::Combine($env:USERPROFILE, "Documents\AHK\AHK Scripts") + "\"
 
 Write-Host "Startup folder: $startupFolder" -ForegroundColor Gray
 
