@@ -1,65 +1,50 @@
 # Alias
-function ll
-{
+function ll {
     Get-ChildItem -Force
 }
 
-if (Get-Command nvim -ErrorAction SilentlyContinue)
-{
+if (Get-Command nvim -ErrorAction SilentlyContinue) {
     Set-Alias -Name vim -Value nvim -Force
 }
 
-if (Get-Command lazygit.exe -ErrorAction SilentlyContinue)
-{
+if (Get-Command lazygit.exe -ErrorAction SilentlyContinue) {
     Set-Alias -Name lg -Value lazygit 
 }
 
 # ob sync commands
-if (Get-Command ob -ErrorAction SilentlyContinue)
-{
-    function ob-sync-list-remote
-    {
+if (Get-Command ob -ErrorAction SilentlyContinue) {
+    function ob-sync-list-remote {
         ob sync-list-remote
     }
-    function ob-sync
-    {
+    function ob-sync {
         ob sync
     }
-    function ob-sync-cont
-    {
+    function ob-sync-cont {
         ob sync --continuous
     }
-    function ob-sync-config-custom
-    {
+    function ob-sync-config-custom {
         ob sync-config --file-types "image,audio,video,pdf,unsupported"
         ob sync-config --configs "app,appearance,appearance-data,hotkey,core-plugin,core-plugin-data,community-plugin,community-plugin-data"
     }
 }
 
-if (Get-Command chezmoi.exe -ErrorAction SilentlyContinue)
-{
+if (Get-Command chezmoi.exe -ErrorAction SilentlyContinue) {
     Set-Alias -Name cmoi -Value chezmoi -Force
-    function cmoicd
-    {
-        if (-not (Test-Path -Path $env:HOMEPATH\.local\share\chezmoi) )
-        { 
+    function cmoicd {
+        if (-not (Test-Path -Path $env:HOMEPATH\.local\share\chezmoi) ) { 
             return
-        } else
-        {
+        } else {
             Set-Location $env:HOMEPATH\.local\share\chezmoi
         }
     }
-    function cmoisync
-    {
+    function cmoisync {
         $chezmoi = "$env:HOMEPATH\.local\share\chezmoi"
-        if (-not (Test-Path -Path $chezmoi))
-        { 
+        if (-not (Test-Path -Path $chezmoi)) { 
             return
         }
         git -C $chezmoi add -A
         $status = git -C $chezmoi status --porcelain
-        if (-not $status)
-        {
+        if (-not $status) {
             Write-Host "cmoisync: nothing to commit, already up to date." -ForegroundColor DarkGray
             return
         }
@@ -73,30 +58,137 @@ function sshnt {
     & 'C:\Windows\System32\OpenSSH\ssh.exe' @args
 }
 
-# Use wsl ssh instead of windows ssh if wsl distro exists
-if (Get-Command wsl.exe -ErrorAction SilentlyContinue)
-{
-    $wslSshCheck = wsl.exe which ssh 2>$null
-    if ($wslSshCheck)
-    {
-        function ssh
-        {
-            wsl.exe ssh @args
+# Funcion to list active serial ports
+function Get-ActiveSerialPorts {
+    <#
+    .SYNOPSIS
+        Lists all active COM ports with detailed information as PowerShell objects.
+    .EXAMPLE
+        Get-ActiveSerialPorts
+    .EXAMPLE
+        Get-ActiveSerialPorts | Where-Object Status -eq 'OK'
+    .EXAMPLE
+        Get-ActiveSerialPorts | Sort-Object Port | Format-Table -AutoSize
+    #>
+    [CmdletBinding()]
+    param()
+
+    Get-CimInstance -ClassName Win32_PnPEntity |
+        Where-Object { $_.Name -match 'COM(\d+)' } |
+        ForEach-Object {
+            [PSCustomObject]@{
+                Port        = [regex]::Match($_.Name, 'COM\d+').Value
+                Name        = $_.Name
+                Description = $_.Description
+                Manufacturer= $_.Manufacturer
+                DeviceID    = $_.DeviceID
+                Status      = $_.Status
+                Present     = $_.Present
+            }
+        } |
+        Sort-Object { [int]($_.Port -replace 'COM', '') }
+}
+
+# Connect to Serial port
+function Connect-ActiveSerialPort {
+    <#
+    .SYNOPSIS
+        Connects to a serial COM port and streams incoming data to the console.
+    .PARAMETER ComPort
+        The COM port to connect to (e.g. COM3, COM10).
+        Must be an active port as returned by Get-ActiveSerialPorts.
+    .PARAMETER BaudSpeed
+        The baud rate to use for the connection.
+    .EXAMPLE
+        Connect-ActiveSerialPort -ComPort COM3 -BaudSpeed 9600
+    .EXAMPLE
+        Connect-ActiveSerialPort -ComPort COM10 -BaudSpeed 115200
+    #>
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory, Position = 0)]
+        [ValidatePattern('^COM\d+$')]
+        [string]$ComPort,
+
+        [Parameter(Mandatory, Position = 1)]
+        [ValidateSet(300, 600, 1200, 2400, 4800, 9600, 14400, 19200, 28800, 38400, 57600, 115200, 128000, 256000)]
+        [int]$BaudSpeed
+    )
+
+    # Validate ComPort against active ports from Get-ActiveSerialPorts
+    $activePorts = Get-ActiveSerialPorts
+    $match = $activePorts | Where-Object { $_.Port -eq $ComPort }
+
+    if (-not $match) {
+        $portList = if ($activePorts) {
+            $activePorts.Port -join ', '
+        } else {
+            'none detected'
+        }
+        Write-Error "COM port '$ComPort' is not active or does not exist. Active ports: $portList"
+        return
+    }
+
+    Write-Verbose "Found: $($match.Name) — Status: $($match.Status)"
+
+    $port = [System.IO.Ports.SerialPort]::new()
+    $port.PortName     = $ComPort
+    $port.BaudRate     = $BaudSpeed
+    $port.DataBits     = 8
+    $port.StopBits     = [System.IO.Ports.StopBits]::One
+    $port.Parity       = [System.IO.Ports.Parity]::None
+    $port.Handshake    = [System.IO.Ports.Handshake]::None
+    $port.ReadTimeout  = 2000
+    $port.WriteTimeout = 2000
+
+    try {
+        $port.Open()
+        Write-Host "Connected to $ComPort ($($match.Name)) at $BaudSpeed baud. Press Ctrl+C to disconnect." -ForegroundColor Green
+
+        while ($true) {
+            try {
+                $line = $port.ReadLine()
+                Write-Output $line
+            }
+            catch [System.TimeoutException] {
+                # No data in timeout window, keep waiting
+            }
         }
     }
-    else {
-    # Do nothing
-    # Falback to windows ssh
+    catch [System.IO.IOException] {
+        Write-Error "Could not open $ComPort. Is the port in use or unavailable?"
+    }
+    catch [System.UnauthorizedAccessException] {
+        Write-Error "$ComPort is already in use by another process."
+    }
+    finally {
+        if ($port.IsOpen) {
+            $port.Close()
+        }
+        $port.Dispose()
+        Write-Host "Disconnected from $ComPort." -ForegroundColor Yellow
     }
 }
 
 
-function cdy
-{
+# Use wsl ssh instead of windows ssh if wsl distro exists
+if (Get-Command wsl.exe -ErrorAction SilentlyContinue) {
+    $wslSshCheck = wsl.exe which ssh 2>$null
+    if ($wslSshCheck) {
+        function ssh {
+            wsl.exe ssh @args
+        }
+    } else {
+        # Do nothing
+        # Falback to windows ssh
+    }
+}
+
+
+function cdy {
     param([string[]]$Args)
 
-    if (-not (Get-Command yazi -ErrorAction SilentlyContinue))
-    {
+    if (-not (Get-Command yazi -ErrorAction SilentlyContinue)) {
         Write-Warning "cdy: 'yazi' not found in PATH."
         return
     }
@@ -105,18 +197,16 @@ function cdy
     Remove-Item $tmp -ErrorAction SilentlyContinue
 
     $yaziArgs = @("--cwd-file", $tmp)
-    if ($Args)
-    { $yaziArgs += $Args 
+    if ($Args) {
+        $yaziArgs += $Args 
     }
 
     & yazi @yaziArgs
 
-    if (Test-Path $tmp)
-    {
+    if (Test-Path $tmp) {
         $dir = (Get-Content $tmp -Raw).Trim()
         Remove-Item $tmp -ErrorAction SilentlyContinue
-        if ($dir -and (Test-Path -LiteralPath $dir))
-        {
+        if ($dir -and (Test-Path -LiteralPath $dir)) {
             Set-Location -LiteralPath $dir
             return
         }
@@ -143,26 +233,22 @@ $global:PromptBgJob = $null
 $global:PromptLastCheck = [datetime]::MinValue
 $global:PromptCheckInterval = 30  # seconds between background checks
 
-function Start-PromptBgCheck
-{
+function Start-PromptBgCheck {
     <#
     .SYNOPSIS
         Kicks off a background job for chezmoi status and unmanaged checks.
         Git is NOT included -- it runs synchronously in the prompt.
     #>
-    if ($global:PromptBgJob -and $global:PromptBgJob.State -eq 'Running')
-    {
+    if ($global:PromptBgJob -and $global:PromptBgJob.State -eq 'Running') {
         return
     }
 
     $elapsed = (Get-Date) - $global:PromptLastCheck
-    if ($elapsed.TotalSeconds -lt $global:PromptCheckInterval)
-    {
+    if ($elapsed.TotalSeconds -lt $global:PromptCheckInterval) {
         return
     }
 
-    if ($global:PromptBgJob)
-    {
+    if ($global:PromptBgJob) {
         Remove-Job $global:PromptBgJob -Force -ErrorAction SilentlyContinue
     }
 
@@ -178,47 +264,43 @@ function Start-PromptBgCheck
 
         $result.CzStatus = chezmoi status 2>$null
 
-        foreach ($folder in $watchedFolders)
-        {
-            if (-not (Test-Path -LiteralPath $folder))
-            { continue 
+        foreach ($folder in $watchedFolders) {
+            if (-not (Test-Path -LiteralPath $folder)) {
+                continue 
             }
             $files = chezmoi unmanaged $folder 2>$null
-            if ($files)
-            { $result.CzUnmanaged += $files 
+            if ($files) {
+                $result.CzUnmanaged += $files 
             }
         }
 
         return $result
-    } -ArgumentList (,$folders)
+    } -ArgumentList (, $folders)
 }
 
-function Receive-PromptBgCheck
-{
+function Receive-PromptBgCheck {
     <#
     .SYNOPSIS
         Collects chezmoi results from a completed background job into cache.
         Also cleans up failed/stopped jobs so the next cycle can retry.
     #>
-    if (-not $global:PromptBgJob)
-    { return 
+    if (-not $global:PromptBgJob) {
+        return 
     }
 
     $state = $global:PromptBgJob.State
-    if ($state -eq 'Running')
-    { return 
+    if ($state -eq 'Running') {
+        return 
     }
 
-    if ($state -eq 'Completed')
-    {
+    if ($state -eq 'Completed') {
         $result = Receive-Job $global:PromptBgJob
-        if ($result)
-        {
+        if ($result) {
             $global:ChezmoiStatusCache = $result.CzStatus
-            $global:ChezmoiUnmanagedCache = if ($result.CzUnmanaged)
-            { $result.CzUnmanaged 
-            } else
-            { @() 
+            $global:ChezmoiUnmanagedCache = if ($result.CzUnmanaged) {
+                $result.CzUnmanaged 
+            } else {
+                @() 
             }
         }
     }
@@ -231,22 +313,19 @@ function Receive-PromptBgCheck
 
 # -- Synchronous helpers for explicit commands -------------------------
 
-function Get-ChezmoiUnmanaged
-{
-    if (-not (Get-Command chezmoi.exe -ErrorAction SilentlyContinue))
-    {
+function Get-ChezmoiUnmanaged {
+    if (-not (Get-Command chezmoi.exe -ErrorAction SilentlyContinue)) {
         return @()
     }
 
     $allUnmanaged = @()
-    foreach ($folder in $global:ChezmoiWatchedFolders)
-    {
-        if (-not (Test-Path -LiteralPath $folder))
-        { continue 
+    foreach ($folder in $global:ChezmoiWatchedFolders) {
+        if (-not (Test-Path -LiteralPath $folder)) {
+            continue 
         }
         $result = chezmoi unmanaged $folder 2>$null
-        if ($result)
-        { $allUnmanaged += $result 
+        if ($result) {
+            $allUnmanaged += $result 
         }
     }
 
@@ -255,10 +334,8 @@ function Get-ChezmoiUnmanaged
     return $allUnmanaged
 }
 
-function cmoistatus
-{
-    if (-not (Get-Command chezmoi.exe -ErrorAction SilentlyContinue))
-    {
+function cmoistatus {
+    if (-not (Get-Command chezmoi.exe -ErrorAction SilentlyContinue)) {
         Write-Warning "cmoistatus: chezmoi not found in PATH."
         return
     }
@@ -266,11 +343,9 @@ function cmoistatus
     Write-Host "-- Chezmoi Status --" -ForegroundColor Cyan
     $czStatus = chezmoi status 2>$null
     $global:ChezmoiStatusCache = $czStatus
-    if ($czStatus)
-    {
+    if ($czStatus) {
         $czStatus | ForEach-Object { Write-Host $_ }
-    } else
-    {
+    } else {
         Write-Host "  (no changes)" -ForegroundColor DarkGray
     }
 
@@ -278,10 +353,8 @@ function cmoistatus
 
     Write-Host "-- Unmanaged Files in Watched Folders --" -ForegroundColor Cyan
     $unmanaged = Get-ChezmoiUnmanaged
-    if ($unmanaged.Count -gt 0)
-    {
-        foreach ($file in $unmanaged)
-        {
+    if ($unmanaged.Count -gt 0) {
+        foreach ($file in $unmanaged) {
             Write-Host "  + $file" -ForegroundColor Red
         }
         Write-Host ""
@@ -289,16 +362,13 @@ function cmoistatus
         Write-Host "  Run " -NoNewline -ForegroundColor DarkGray
         Write-Host "cmoireadd" -NoNewline -ForegroundColor Green
         Write-Host " to re-add tracked changes and add these files." -ForegroundColor DarkGray
-    } else
-    {
+    } else {
         Write-Host "  (all watched folders fully tracked)" -ForegroundColor DarkGray
     }
 }
 
-function cmoireadd
-{
-    if (-not (Get-Command chezmoi.exe -ErrorAction SilentlyContinue))
-    {
+function cmoireadd {
+    if (-not (Get-Command chezmoi.exe -ErrorAction SilentlyContinue)) {
         Write-Warning "cmoireadd: chezmoi not found in PATH."
         return
     }
@@ -311,26 +381,21 @@ function cmoireadd
 
     Write-Host "-- Adding unmanaged files from watched folders --" -ForegroundColor Cyan
     $unmanaged = Get-ChezmoiUnmanaged
-    if ($unmanaged.Count -gt 0)
-    {
+    if ($unmanaged.Count -gt 0) {
         $added = 0
-        foreach ($file in $unmanaged)
-        {
+        foreach ($file in $unmanaged) {
             $fullPath = Join-Path $env:USERPROFILE $file
-            if (Test-Path -LiteralPath $fullPath)
-            {
+            if (Test-Path -LiteralPath $fullPath) {
                 Write-Host "  + $file" -ForegroundColor Green
                 chezmoi add $fullPath
                 $added++
-            } else
-            {
+            } else {
                 Write-Host "  X $file (not found, skipping)" -ForegroundColor Yellow
             }
         }
         Write-Host ""
         Write-Host "  $added file(s) added to chezmoi." -ForegroundColor Green
-    } else
-    {
+    } else {
         Write-Host "  (no unmanaged files found)" -ForegroundColor DarkGray
     }
 
@@ -341,19 +406,17 @@ function cmoireadd
 # -- Custom Prompt -----------------------------------------------------
 $global:ChezmoiCheck = $true
 
-function Enable-ChezmoiCheck
-{ $global:ChezmoiCheck = $true; Write-Host "Chezmoi check ON" 
+function Enable-ChezmoiCheck {
+    $global:ChezmoiCheck = $true; Write-Host "Chezmoi check ON" 
 }
-function Disable-ChezmoiCheck
-{ $global:ChezmoiCheck = $false; Write-Host "Chezmoi check OFF" 
+function Disable-ChezmoiCheck {
+    $global:ChezmoiCheck = $false; Write-Host "Chezmoi check OFF" 
 }
 
-function prompt
-{
+function prompt {
     $lastSuccess = $?
 
-    try
-    {
+    try {
         $user = $env:USERNAME
         $host_name = $env:COMPUTERNAME
         $path = $executionContext.SessionState.Path.CurrentLocation.Path
@@ -371,39 +434,34 @@ function prompt
 
         # Git -- synchronous (fast enough for most repos)
         $branch = git branch --show-current 2>$null
-        if ($branch)
-        {
+        if ($branch) {
             $dirty = git status --porcelain 2>$null
-            $branchColor = if ($dirty)
-            { "Yellow" 
-            } else
-            { "Green" 
+            $branchColor = if ($dirty) {
+                "Yellow" 
+            } else {
+                "Green" 
             }
             Write-Host "  $branch" -NoNewline -ForegroundColor $branchColor
-            if ($dirty)
-            {
+            if ($dirty) {
                 Write-Host " X" -NoNewline -ForegroundColor Red
             }
         }
 
         # Chezmoi -- from background cache (zero cost)
-        if ($global:ChezmoiCheck)
-        {
-            if ($global:ChezmoiStatusCache)
-            {
+        if ($global:ChezmoiCheck) {
+            if ($global:ChezmoiStatusCache) {
                 Write-Host " cmoi +/-" -NoNewline -ForegroundColor Yellow
             }
-            if ($global:ChezmoiUnmanagedCache.Count -gt 0)
-            {
+            if ($global:ChezmoiUnmanagedCache.Count -gt 0) {
                 Write-Host " cmoiFolder +$($global:ChezmoiUnmanagedCache.Count)" -NoNewline -ForegroundColor Red
             }
         }
 
         Write-Host ""
-        $promptColor = if ($lastSuccess)
-        { "Green" 
-        } else
-        { "Red" 
+        $promptColor = if ($lastSuccess) {
+            "Green" 
+        } else {
+            "Red" 
         }
         Write-Host "-" -NoNewline -ForegroundColor White
         Write-Host ">" -NoNewline -ForegroundColor $promptColor
@@ -412,15 +470,13 @@ function prompt
         Start-PromptBgCheck
 
         return " "
-    } catch
-    {
+    } catch {
         return "-> "
     }
 }
 
 # zoxide config
-if (Get-Command zoxide -ErrorAction SilentlyContinue)
-{
+if (Get-Command zoxide -ErrorAction SilentlyContinue) {
     Invoke-Expression (& { (zoxide init powershell | Out-String) })
 }
 
