@@ -51,7 +51,7 @@ if (Get-Command chezmoi.exe -ErrorAction SilentlyContinue) {
         git -C $chezmoi commit -m "update $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
         git -C $chezmoi push --force
     }
-    function cmoi-onedrive-apply {
+    function cmoiOnedriveApply {
         <#
     .SYNOPSIS
         Copies PowerShell profile files to OneDrive-mapped Documents folders
