@@ -32,16 +32,15 @@ if (Get-Command chezmoi.exe -ErrorAction SilentlyContinue) {
     Set-Alias -Name cmoi -Value chezmoi -Force
     function cmoicd {
         if (-not (Test-Path -Path $env:HOMEPATH\.local\share\chezmoi) ) { 
-           return
-        }
-        else {
-           Set-Location $env:HOMEPATH\.local\share\chezmoi
+            return
+        } else {
+            Set-Location $env:HOMEPATH\.local\share\chezmoi
         }
     }
     function cmoisync {
         $chezmoi = "$env:HOMEPATH\.local\share\chezmoi"
         if (-not (Test-Path -Path $chezmoi)) { 
-           return
+            return
         }
         git -C $chezmoi add -A
         $status = git -C $chezmoi status --porcelain
@@ -77,13 +76,13 @@ function Get-ActiveSerialPorts {
         Where-Object { $_.Name -match 'COM(\d+)' } |
         ForEach-Object {
             [PSCustomObject]@{
-                Port        = [regex]::Match($_.Name, 'COM\d+').Value
-                Name        = $_.Name
-                Description = $_.Description
-                Manufacturer= $_.Manufacturer
-                DeviceID    = $_.DeviceID
-                Status      = $_.Status
-                Present     = $_.Present
+                Port         = [regex]::Match($_.Name, 'COM\d+').Value
+                Name         = $_.Name
+                Description  = $_.Description
+                Manufacturer = $_.Manufacturer
+                DeviceID     = $_.DeviceID
+                Status       = $_.Status
+                Present      = $_.Present
             }
         } |
         Sort-Object { [int]($_.Port -replace 'COM', '') }
@@ -91,131 +90,112 @@ function Get-ActiveSerialPorts {
 
 # Connect to Serial port
 function Connect-ActiveSerialPort {
-    <#
-    .SYNOPSIS
-        Connects to a serial COM port and streams incoming data to the console.
-    .PARAMETER ComPort
-        The COM port to connect to (e.g. COM3, COM10).
-        Must be an active port as returned by Get-ActiveSerialPorts.
-    .PARAMETER BaudSpeed
-        The baud rate to use for the connection.
-    .EXAMPLE
-        Connect-ActiveSerialPort -ComPort COM3 -BaudSpeed 9600
-    .EXAMPLE
-        Connect-ActiveSerialPort -ComPort COM10 -BaudSpeed 115200
-    #>
-    [CmdletBinding()]
     param (
-        [Parameter(Mandatory, Position = 0)]
-        [ValidatePattern('^COM\d+$')]
+        [Parameter(Mandatory = $true)]
+        [ValidatePattern('^(?i)COM\d+$')]
         [string]$ComPort,
 
-        [Parameter(Mandatory, Position = 1)]
-        [ValidateSet(300, 600, 1200, 2400, 4800, 9600, 14400, 19200, 28800, 38400, 57600, 115200, 128000, 256000)]
-        [int]$BaudSpeed
+        [int]$BaudRate = 9600,
+
+        [ValidateSet(5, 6, 7, 8)]
+        [int]$DataBits = 8,
+
+        [ValidateSet("None", "Odd", "Even", "Mark", "Space")]
+        [string]$Parity = "None",
+
+        [ValidateSet("One", "Two", "OnePointFive")]
+        [string]$StopBits = "One",
+
+        [ValidateSet("None", "XOnXOff", "RequestToSend", "RequestToSendXOnXOff")]
+        [string]$FlowControl = "None"
     )
 
-    # Validate ComPort against active ports from Get-ActiveSerialPorts
-    $activePorts = Get-ActiveSerialPorts
-    $match = $activePorts | Where-Object { $_.Port -eq $ComPort }
+    $parityEnum = [System.IO.Ports.Parity]::$Parity
+    $stopBitsEnum = [System.IO.Ports.StopBits]::$StopBits
+    $handshakeEnum = [System.IO.Ports.Handshake]::$FlowControl
 
-    if (-not $match) {
-        $portList = if ($activePorts) {
-            $activePorts.Port -join ', '
-        } else {
-            'none detected'
-        }
-        Write-Error "COM port '$ComPort' is not active or does not exist. Active ports: $portList"
-        return
-    }
+    $port = New-Object System.IO.Ports.SerialPort `
+        $ComPort, $BaudRate, $parityEnum, $DataBits, $stopBitsEnum
 
-    Write-Verbose "Found: $($match.Name) — Status: $($match.Status)"
-
-    $port = [System.IO.Ports.SerialPort]::new()
-    $port.PortName     = $ComPort
-    $port.BaudRate     = $BaudSpeed
-    $port.DataBits     = 8
-    $port.StopBits     = [System.IO.Ports.StopBits]::One
-    $port.Parity       = [System.IO.Ports.Parity]::None
-    $port.Handshake    = [System.IO.Ports.Handshake]::None
-    $port.ReadTimeout  = 2000
-    $port.WriteTimeout = 2000
+    $port.Handshake = $handshakeEnum
+    $port.Encoding = [System.Text.Encoding]::ASCII
 
     try {
         $port.Open()
-        Write-Host "Connected to $ComPort ($($match.Name)) at $BaudSpeed baud. Press Ctrl+C to disconnect." -ForegroundColor Green
 
+        Write-Host "Connected to $ComPort ($BaudRate baud). Press Ctrl+C to exit.`n" -ForegroundColor Cyan
         while ($true) {
-            try {
-                $line = $port.ReadLine()
-                Write-Output $line
+            # Read incoming data (byte-safe)
+            while ($port.BytesToRead -gt 0) {
+                $byte = $port.ReadByte()
+                if ($byte -ge 0) {
+                    [Console]::Write([char]$byte)
+                }
             }
-            catch [System.TimeoutException] {
-                # No data in timeout window, keep waiting
+
+            # Handle keyboard input
+            if ([Console]::KeyAvailable) {
+                $key = [Console]::ReadKey($true)
+
+                if ($key.Key -eq "Enter") {
+                    $port.Write("`r`n")
+                } else {
+                    $port.Write($key.KeyChar)
+                }
             }
         }
-    }
-    catch [System.IO.IOException] {
-        Write-Error "Could not open $ComPort. Is the port in use or unavailable?"
-    }
-    catch [System.UnauthorizedAccessException] {
-        Write-Error "$ComPort is already in use by another process."
-    }
-    finally {
+    } finally {
         if ($port.IsOpen) {
             $port.Close()
         }
-        $port.Dispose()
-        Write-Host "Disconnected from $ComPort." -ForegroundColor Yellow
+
+        Write-Host "`nDisconnected." -ForegroundColor Yellow
     }
 }
 
-
 # Use wsl ssh instead of windows ssh if wsl distro exists
-if (Get-Command wsl.exe -ErrorAction SilentlyContinue)
-{
+if (Get-Command wsl.exe -ErrorAction SilentlyContinue) {
     $wslSshCheck = wsl.exe which ssh 2>$null
-    if ($wslSshCheck)
-    {
-        function ssh
-        {
+    if ($wslSshCheck) {
+        function ssh {
             wsl.exe ssh @args
         }
-    }
-    else {
-    # Do nothing
-    # Falback to windows ssh
+    } else {
+        # Do nothing
+        # Falback to windows ssh
     }
 }
 
 
 
 function cdy {
-  param([string[]]$Args)
+    param([string[]]$Args)
 
-  if (-not (Get-Command yazi -ErrorAction SilentlyContinue)) {
-    Write-Warning "cdy: 'yazi' not found in PATH."
-    return
-  }
-
-  $tmp = [System.IO.Path]::GetTempFileName()
-  Remove-Item $tmp -ErrorAction SilentlyContinue
-
-  $yaziArgs = @("--cwd-file", $tmp)
-  if ($Args) { $yaziArgs += $Args }
-
-  & yazi @yaziArgs
-
-  if (Test-Path $tmp) {
-    $dir = (Get-Content $tmp -Raw).Trim()
-    Remove-Item $tmp -ErrorAction SilentlyContinue
-    if ($dir -and (Test-Path -LiteralPath $dir)) {
-      Set-Location -LiteralPath $dir
-      return
+    if (-not (Get-Command yazi -ErrorAction SilentlyContinue)) {
+        Write-Warning "cdy: 'yazi' not found in PATH."
+        return
     }
-  }
 
-  Write-Warning "cdy: yazi did not write a valid directory."
+    $tmp = [System.IO.Path]::GetTempFileName()
+    Remove-Item $tmp -ErrorAction SilentlyContinue
+
+    $yaziArgs = @("--cwd-file", $tmp)
+    if ($Args) {
+        $yaziArgs += $Args 
+    }
+
+    & yazi @yaziArgs
+
+    if (Test-Path $tmp) {
+        $dir = (Get-Content $tmp -Raw).Trim()
+        Remove-Item $tmp -ErrorAction SilentlyContinue
+        if ($dir -and (Test-Path -LiteralPath $dir)) {
+            Set-Location -LiteralPath $dir
+            return
+        }
+    }
+
+    Write-Warning "cdy: yazi did not write a valid directory."
 }
 
 # Accept inline history suggestion with Ctrl+Y
@@ -224,8 +204,8 @@ Set-PSReadLineKeyHandler -Chord 'Ctrl+y' -Function AcceptSuggestion
 # Make prediction/suggestion text a more distinct color
 Set-PSReadLineOption -PredictionSource History
 Set-PSReadLineOption -Colors @{
-  Command            = 'Cyan'
-  InlinePrediction   = '#6c6c6c'
+    Command          = 'Cyan'
+    InlinePrediction = '#6c6c6c'
 }
 
 # ── Chezmoi Unmanaged File Tracking ──────────────────────────────────
@@ -277,13 +257,17 @@ function Start-PromptBgCheck {
         $result.CzStatus = chezmoi status 2>$null
 
         foreach ($folder in $watchedFolders) {
-            if (-not (Test-Path -LiteralPath $folder)) { continue }
+            if (-not (Test-Path -LiteralPath $folder)) {
+                continue 
+            }
             $files = chezmoi unmanaged $folder 2>$null
-            if ($files) { $result.CzUnmanaged += $files }
+            if ($files) {
+                $result.CzUnmanaged += $files 
+            }
         }
 
         return $result
-    } -ArgumentList (,$folders)
+    } -ArgumentList (, $folders)
 }
 
 function Receive-PromptBgCheck {
@@ -292,10 +276,14 @@ function Receive-PromptBgCheck {
         Collects chezmoi results from a completed background job into cache.
         Also cleans up failed/stopped jobs so the next cycle can retry.
     #>
-    if (-not $global:PromptBgJob) { return }
+    if (-not $global:PromptBgJob) {
+        return 
+    }
 
     $state = $global:PromptBgJob.State
-    if ($state -eq 'Running') { return }
+    if ($state -eq 'Running') {
+        return 
+    }
 
     if ($state -eq 'Completed') {
         $result = Receive-Job $global:PromptBgJob
@@ -320,9 +308,13 @@ function Get-ChezmoiUnmanaged {
 
     $allUnmanaged = @()
     foreach ($folder in $global:ChezmoiWatchedFolders) {
-        if (-not (Test-Path -LiteralPath $folder)) { continue }
+        if (-not (Test-Path -LiteralPath $folder)) {
+            continue 
+        }
         $result = chezmoi unmanaged $folder 2>$null
-        if ($result) { $allUnmanaged += $result }
+        if ($result) {
+            $allUnmanaged += $result 
+        }
     }
 
     $global:ChezmoiUnmanagedCache = $allUnmanaged
@@ -402,8 +394,12 @@ function cmoireadd {
 # ── Custom Prompt ────────────────────────────────────────────────────
 $global:ChezmoiCheck = $true
 
-function Enable-ChezmoiCheck { $global:ChezmoiCheck = $true; Write-Host "Chezmoi check ON" }
-function Disable-ChezmoiCheck { $global:ChezmoiCheck = $false; Write-Host "Chezmoi check OFF" }
+function Enable-ChezmoiCheck {
+    $global:ChezmoiCheck = $true; Write-Host "Chezmoi check ON" 
+}
+function Disable-ChezmoiCheck {
+    $global:ChezmoiCheck = $false; Write-Host "Chezmoi check OFF" 
+}
 
 function prompt {
     $lastSuccess = $?
@@ -428,7 +424,11 @@ function prompt {
         $branch = git branch --show-current 2>$null
         if ($branch) {
             $dirty = git status --porcelain 2>$null
-            $branchColor = if ($dirty) { "Yellow" } else { "Green" }
+            $branchColor = if ($dirty) {
+                "Yellow" 
+            } else {
+                "Green" 
+            }
             Write-Host "  $branch" -NoNewline -ForegroundColor $branchColor
             if ($dirty) {
                 Write-Host " ✗" -NoNewline -ForegroundColor Red
@@ -446,7 +446,11 @@ function prompt {
         }
 
         Write-Host ""
-        $promptColor = if ($lastSuccess) { "Green" } else { "Red" }
+        $promptColor = if ($lastSuccess) {
+            "Green" 
+        } else {
+            "Red" 
+        }
         Write-Host "╰─ " -NoNewline -ForegroundColor White
         Write-Host "❯" -NoNewline -ForegroundColor $promptColor
 
@@ -454,8 +458,7 @@ function prompt {
         Start-PromptBgCheck
 
         return " "
-    }
-    catch {
+    } catch {
         return "╰─ ❯ "
     }
 }
