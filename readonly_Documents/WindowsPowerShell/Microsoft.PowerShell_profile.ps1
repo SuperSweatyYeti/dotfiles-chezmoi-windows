@@ -149,13 +149,13 @@ if (Get-Command Get-ADUser -ErrorAction SilentlyContinue) {
     function Get-ADUserCustom {
         param (
             [Parameter(Mandatory)]
-            [ValidateSet("Name", "DisplayName", "Description", "Title", "Department", "Manager", "UserPrincipalName", "samaccountname", "mail")]
-            [string]$FilterProperty,     # samAccountName
+            [string]$SearchPattern,
 
-            [Parameter(Mandatory)]
-            [string]$SearchPattern   # New Password
+            [Parameter(Mandatory=$false)]
+            [ValidateSet("Name", "DisplayName", "Description", "Title", "Department", "Manager", "UserPrincipalName", "samaccountname", "mail")]
+            [string]$FilterProperty = "Name"     # samAccountName
         )
-        $SearchString = "*" + $Searchpattern + "*"
+        $SearchString = "*" + $SearchPattern + "*" 
         Get-ADUser -Filter { $FilterProperty -like $SearchString } -Properties * | select Name, DisplayName, Description, Title, Department, Manager, UserPrincipalName, samaccountname, mail, Created, Modified, AccountExpirationDate, Enabled, LockedOut
     }
 }
