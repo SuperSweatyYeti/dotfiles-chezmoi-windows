@@ -155,7 +155,8 @@ if (Get-Command Get-ADUser -ErrorAction SilentlyContinue) {
             [Parameter(Mandatory)]
             [string]$SearchPattern   # New Password
         )
-        Get-ADUser -Filter { $FilterProperty -like "*$SearchTerm*" } -Properties * | select Name, DisplayName, Description, Title, Department, Manager, UserPrincipalName, samaccountname, mail, Created, Modified, AccountExpirationDate, Enabled, LockedOut
+        $SearchString = "*" + $Searchpattern + "*"
+        Get-ADUser -Filter { $FilterProperty -like $SearchString } -Properties * | select Name, DisplayName, Description, Title, Department, Manager, UserPrincipalName, samaccountname, mail, Created, Modified, AccountExpirationDate, Enabled, LockedOut
     }
 }
 ###############################
