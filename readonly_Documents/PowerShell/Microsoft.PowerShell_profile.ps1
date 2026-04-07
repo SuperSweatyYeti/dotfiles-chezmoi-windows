@@ -57,6 +57,55 @@ function sshnt {
     & 'C:\Windows\System32\OpenSSH\ssh.exe' @args
 }
 
+###############################
+# Active Directory Stuff
+###############################
+if (Get-Command Get-ADUser -ErrorAction SilentlyContinue) {
+    function Set-ADUserPasswordCustom {
+        param (
+            [Parameter(Mandatory)]
+            [string]$Identity,     # samAccountName
+
+            [Parameter(Mandatory)]
+            [string]$NewPassword,  # New Password
+
+            [switch]$ChangeAtLogon
+        )
+
+        # Reset password
+        Set-ADAccountPassword `
+            -Identity $Identity `
+            -Reset `
+            -NewPassword (ConvertTo-SecureString $NewPassword -AsPlainText -Force)
+
+        if ($ChangeAtLogon) {
+            # Get current user properties
+            $user = Get-ADUser -Identity $Identity -Properties PasswordNeverExpires
+
+            if ($user.PasswordNeverExpires) {
+                Write-Warning "User '$Identity' has PasswordNeverExpires set. Cannot force change at next logon."
+            } else {
+                Set-ADUser -Identity $Identity -ChangePasswordAtLogon $true
+            }
+        }
+    }
+    function Get-ADUserCustom {
+        param (
+            [Parameter(Mandatory)]
+            [ValidateSet("Name", "DisplayName", "Description", "Title", "Department", "Manager", "UserPrincipalName", "samaccountname", "mail")]
+            [string]$FilterProperty,     # samAccountName
+
+            [Parameter(Mandatory)]
+            [string]$SearchPattern   # New Password
+        )
+        Get-ADUser -Filter { $FilterProperty -like "*$SearchTerm*" } -Properties * | select Name, DisplayName, Description, Title, Department, Manager, UserPrincipalName, samaccountname, mail, Created, Modified, AccountExpirationDate, Enabled, LockedOut
+    }
+}
+###############################
+# Active Directory Stuff END
+###############################
+
+
 # Funcion to list active serial ports
 function Get-ActiveSerialPorts {
     <#
@@ -90,68 +139,126 @@ function Get-ActiveSerialPorts {
 
 # Connect to Serial port
 function Connect-ActiveSerialPort {
+    <#
+    .SYNOPSIS
+        Connects to a serial COM port and streams incoming data to the console.
+    .PARAMETER ComPort
+        The COM port to connect to (e.g. COM3, COM10).
+        Must be an active port as returned by Get-ActiveSerialPorts.
+    .PARAMETER BaudSpeed
+        The baud rate to use for the connection.
+    .EXAMPLE
+        Connect-ActiveSerialPort -ComPort COM3 -BaudSpeed 9600
+    .EXAMPLE
+        Connect-ActiveSerialPort -ComPort COM10 -BaudSpeed 115200
+    #>
+    [CmdletBinding()]
     param (
-        [Parameter(Mandatory = $true)]
-        [ValidatePattern('^(?i)COM\d+$')]
+        [Parameter(Mandatory, Position = 0)]
+        [ValidatePattern('^COM\d+$')]
         [string]$ComPort,
 
-        [int]$BaudRate = 9600,
-
-        [ValidateSet(5, 6, 7, 8)]
-        [int]$DataBits = 8,
-
-        [ValidateSet("None", "Odd", "Even", "Mark", "Space")]
-        [string]$Parity = "None",
-
-        [ValidateSet("One", "Two", "OnePointFive")]
-        [string]$StopBits = "One",
-
-        [ValidateSet("None", "XOnXOff", "RequestToSend", "RequestToSendXOnXOff")]
-        [string]$FlowControl = "None"
+        [Parameter(Mandatory, Position = 1)]
+        [ValidateSet(300, 600, 1200, 2400, 4800, 9600, 14400, 19200, 28800, 38400, 57600, 115200, 128000, 256000)]
+        [int]$BaudSpeed
     )
 
-    $parityEnum = [System.IO.Ports.Parity]::$Parity
-    $stopBitsEnum = [System.IO.Ports.StopBits]::$StopBits
-    $handshakeEnum = [System.IO.Ports.Handshake]::$FlowControl
+    # Validate ComPort against active ports from Get-ActiveSerialPorts
+    $activePorts = Get-ActiveSerialPorts
+    $match = $activePorts | Where-Object { $_.Port -eq $ComPort }
 
-    $port = New-Object System.IO.Ports.SerialPort `
-        $ComPort, $BaudRate, $parityEnum, $DataBits, $stopBitsEnum
+    if (-not $match) {
+        $portList = if ($activePorts) {
+            $activePorts.Port -join ', '
+        } else {
+            'none detected'
+        }
+        Write-Error "COM port '$ComPort' is not active or does not exist. Active ports: $portList"
+        return
+    }
 
-    $port.Handshake = $handshakeEnum
-    $port.Encoding = [System.Text.Encoding]::ASCII
+    Write-Verbose "Found: $($match.Name) — Status: $($match.Status)"
+
+    $port = [System.IO.Ports.SerialPort]::new()
+    $port.PortName = $ComPort
+    $port.BaudRate = $BaudSpeed
+    $port.DataBits = 8
+    $port.StopBits = [System.IO.Ports.StopBits]::One
+    $port.Parity = [System.IO.Ports.Parity]::None
+    $port.Handshake = [System.IO.Ports.Handshake]::None
+    $port.ReadTimeout = 2000
+    $port.WriteTimeout = 2000
 
     try {
         $port.Open()
+        Write-Host "Connected to $ComPort ($($match.Name)) at $BaudSpeed baud. Press Ctrl+C to disconnect." -ForegroundColor Green
 
-        Write-Host "Connected to $ComPort ($BaudRate baud). Press Ctrl+C to exit.`n" -ForegroundColor Cyan
         while ($true) {
-            # Read incoming data (byte-safe)
-            while ($port.BytesToRead -gt 0) {
-                $byte = $port.ReadByte()
-                if ($byte -ge 0) {
-                    [Console]::Write([char]$byte)
-                }
-            }
-
-            # Handle keyboard input
-            if ([Console]::KeyAvailable) {
-                $key = [Console]::ReadKey($true)
-
-                if ($key.Key -eq "Enter") {
-                    $port.Write("`r`n")
-                } else {
-                    $port.Write($key.KeyChar)
-                }
+            try {
+                $line = $port.ReadLine()
+                Write-Output $line
+            } catch [System.TimeoutException] {
+                # No data in timeout window, keep waiting
             }
         }
+    } catch [System.IO.IOException] {
+        Write-Error "Could not open $ComPort. Is the port in use or unavailable?"
+    } catch [System.UnauthorizedAccessException] {
+        Write-Error "$ComPort is already in use by another process."
     } finally {
         if ($port.IsOpen) {
             $port.Close()
         }
-
-        Write-Host "`nDisconnected." -ForegroundColor Yellow
+        $port.Dispose()
+        Write-Host "Disconnected from $ComPort." -ForegroundColor Yellow
     }
 }
+
+###############################
+# Active Directory Stuff
+###############################
+if (Get-Command Get-ADUser -ErrorAction SilentlyContinue) {
+    function Set-ADUserPasswordCustom {
+        param (
+            [Parameter(Mandatory)]
+            [string]$Identity,     # samAccountName
+
+            [Parameter(Mandatory)]
+            [string]$NewPassword,  # New Password
+
+            [switch]$ChangeAtLogon
+        )
+
+        # Reset password
+        Set-ADAccountPassword `
+            -Identity $Identity `
+            -Reset `
+            -NewPassword (ConvertTo-SecureString $NewPassword -AsPlainText -Force)
+
+        if ($ChangeAtLogon) {
+            # Get current user properties
+            $user = Get-ADUser -Identity $Identity -Properties PasswordNeverExpires
+
+            if ($user.PasswordNeverExpires) {
+                Write-Warning "User '$Identity' has PasswordNeverExpires set. Cannot force change at next logon."
+            } else {
+                Set-ADUser -Identity $Identity -ChangePasswordAtLogon $true
+            }
+        }
+    }
+    function Get-ADUserCustom {
+        param (
+            [Parameter(Mandatory)]
+            [ValidateSet("Name", "DisplayName", "Description", "Title", "Department", "Manager", "UserPrincipalName", "samaccountname", "mail")]
+            [string]$FilterProperty,     # samAccountName
+
+            [Parameter(Mandatory)]
+            [string]$SearchPattern   # New Password
+        )
+        Get-ADUser -Filter { $FilterProperty -like "*$SearchTerm*" } -Properties * | select Name, DisplayName, Description, Title, Department, Manager, UserPrincipalName, samaccountname, mail, Created, Modified, AccountExpirationDate, Enabled, LockedOut
+    }
+}
+
 
 # Use wsl ssh instead of windows ssh if wsl distro exists
 if (Get-Command wsl.exe -ErrorAction SilentlyContinue) {
