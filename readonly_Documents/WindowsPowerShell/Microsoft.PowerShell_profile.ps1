@@ -114,6 +114,55 @@ function sshnt {
     & 'C:\Windows\System32\OpenSSH\ssh.exe' @args
 }
 
+###############################
+# Active Directory Stuff
+###############################
+if (Get-Command Get-ADUser -ErrorAction SilentlyContinue) {
+    function Set-ADUserPasswordCustom {
+        param (
+            [Parameter(Mandatory)]
+            [string]$Identity,     # samAccountName
+
+            [Parameter(Mandatory)]
+            [string]$NewPassword,  # New Password
+
+            [switch]$ChangeAtLogon
+        )
+
+        # Reset password
+        Set-ADAccountPassword `
+            -Identity $Identity `
+            -Reset `
+            -NewPassword (ConvertTo-SecureString $NewPassword -AsPlainText -Force)
+
+        if ($ChangeAtLogon) {
+            # Get current user properties
+            $user = Get-ADUser -Identity $Identity -Properties PasswordNeverExpires
+
+            if ($user.PasswordNeverExpires) {
+                Write-Warning "User '$Identity' has PasswordNeverExpires set. Cannot force change at next logon."
+            } else {
+                Set-ADUser -Identity $Identity -ChangePasswordAtLogon $true
+            }
+        }
+    }
+    function Get-ADUserCustom {
+        param (
+            [Parameter(Mandatory)]
+            [ValidateSet("Name", "DisplayName", "Description", "Title", "Department", "Manager", "UserPrincipalName", "samaccountname", "mail")]
+            [string]$FilterProperty,     # samAccountName
+
+            [Parameter(Mandatory)]
+            [string]$SearchPattern   # New Password
+        )
+        Get-ADUser -Filter { $FilterProperty -like "*$SearchTerm*" } -Properties * | select Name, DisplayName, Description, Title, Department, Manager, UserPrincipalName, samaccountname, mail, Created, Modified, AccountExpirationDate, Enabled, LockedOut
+    }
+}
+###############################
+# Active Directory Stuff END
+###############################
+
+
 # Funcion to list active serial ports
 function Get-ActiveSerialPorts {
     <#
