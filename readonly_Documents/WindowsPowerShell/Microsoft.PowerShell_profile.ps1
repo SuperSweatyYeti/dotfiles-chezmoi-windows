@@ -58,7 +58,7 @@ if (Get-Command chezmoi.exe -ErrorAction SilentlyContinue) {
         OneDrive-mapped Documents folder.
     #>
 
-        $oneDriveDocs = [Environment]::GetFolderPath([System.Environment+SpecialFolder]::MyDocuments)
+        $oneDriveDocs = [Environment]::GetFolderPath('MyDocuments')
         $localDocs = Join-Path $env:USERPROFILE 'Documents'
 
         if (-not $oneDriveDocs) {
@@ -87,7 +87,7 @@ if (Get-Command chezmoi.exe -ErrorAction SilentlyContinue) {
 
         foreach ($p in $profiles) {
             if (-not (Test-Path $p.Source)) {
-                Write-Verbose "Skipping — $($p.Source) does not exist"
+                Write-Verbose "Skipping - $($p.Source) does not exist"
                 continue
             }
 
