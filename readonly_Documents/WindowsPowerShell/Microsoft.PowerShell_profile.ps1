@@ -51,61 +51,68 @@ if (Get-Command chezmoi.exe -ErrorAction SilentlyContinue) {
         git -C $chezmoi commit -m "update $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
         git -C $chezmoi push --force
     }
+    function cmoi-onedrive-apply {
+        <#
+    .SYNOPSIS
+        Copies the PowerShell and WindowsPowerShell profile files to the
+        OneDrive-mapped Documents folder.
+    #>
+
+        $oneDriveDocs = [Environment]::GetFolderPath([System.Environment+SpecialFolder]::MyDocuments)
+        $localDocs = Join-Path $env:USERPROFILE 'Documents'
+
+        if (-not $oneDriveDocs) {
+            Write-Error "cmoi-onedrive-apply: Could not resolve Documents special folder."
+            return
+        }
+
+        if ($oneDriveDocs -eq $localDocs) {
+            Write-Host "cmoi-onedrive-apply: Documents is not redirected to OneDrive. Nothing to do." -ForegroundColor DarkGray
+            return
+        }
+
+        Write-Host "Local Documents:    $localDocs" -ForegroundColor DarkGray
+        Write-Host "OneDrive Documents: $oneDriveDocs" -ForegroundColor DarkGray
+
+        $profiles = @(
+            @{ Source = Join-Path $localDocs 'PowerShell\Microsoft.PowerShell_profile.ps1'
+                Dest  = Join-Path $oneDriveDocs 'PowerShell' 
+            }
+            @{ Source = Join-Path $localDocs 'WindowsPowerShell\Microsoft.PowerShell_profile.ps1'
+                Dest  = Join-Path $oneDriveDocs 'WindowsPowerShell' 
+            }
+        )
+
+        $copied = 0
+
+        foreach ($p in $profiles) {
+            if (-not (Test-Path $p.Source)) {
+                Write-Verbose "Skipping — $($p.Source) does not exist"
+                continue
+            }
+
+            if (-not (Test-Path $p.Dest)) {
+                New-Item -Path $p.Dest -ItemType Directory -Force | Out-Null
+                Write-Host "  Created: $($p.Dest)" -ForegroundColor Yellow
+            }
+
+            Copy-Item -Path $p.Source -Destination $p.Dest -Force
+            Write-Host "  Copied: $($p.Source) -> $($p.Dest)" -ForegroundColor Green
+            $copied++
+        }
+
+        if ($copied -eq 0) {
+            Write-Host "cmoi-onedrive-apply: No profile files found to copy." -ForegroundColor DarkGray
+        } else {
+            Write-Host "cmoi-onedrive-apply: Synced $copied profile(s) to OneDrive." -ForegroundColor Cyan
+        }
+    }
 }
 
 # Normal windows ssh
 function sshnt {
     & 'C:\Windows\System32\OpenSSH\ssh.exe' @args
 }
-
-###############################
-# Active Directory Stuff
-###############################
-if (Get-Command Get-ADUser -ErrorAction SilentlyContinue) {
-    function Set-ADUserPasswordCustom {
-        param (
-            [Parameter(Mandatory)]
-            [string]$Identity,     # samAccountName
-
-            [Parameter(Mandatory)]
-            [string]$NewPassword,  # New Password
-
-            [switch]$ChangeAtLogon
-        )
-
-        # Reset password
-        Set-ADAccountPassword `
-            -Identity $Identity `
-            -Reset `
-            -NewPassword (ConvertTo-SecureString $NewPassword -AsPlainText -Force)
-
-        if ($ChangeAtLogon) {
-            # Get current user properties
-            $user = Get-ADUser -Identity $Identity -Properties PasswordNeverExpires
-
-            if ($user.PasswordNeverExpires) {
-                Write-Warning "User '$Identity' has PasswordNeverExpires set. Cannot force change at next logon."
-            } else {
-                Set-ADUser -Identity $Identity -ChangePasswordAtLogon $true
-            }
-        }
-    }
-    function Get-ADUserCustom {
-        param (
-            [Parameter(Mandatory)]
-            [ValidateSet("Name", "DisplayName", "Description", "Title", "Department", "Manager", "UserPrincipalName", "samaccountname", "mail")]
-            [string]$FilterProperty,     # samAccountName
-
-            [Parameter(Mandatory)]
-            [string]$SearchPattern   # New Password
-        )
-        Get-ADUser -Filter { $FilterProperty -like "*$SearchTerm*" } -Properties * | select Name, DisplayName, Description, Title, Department, Manager, UserPrincipalName, samaccountname, mail, Created, Modified, AccountExpirationDate, Enabled, LockedOut
-    }
-}
-###############################
-# Active Directory Stuff END
-###############################
-
 
 # Funcion to list active serial ports
 function Get-ActiveSerialPorts {
@@ -126,17 +133,83 @@ function Get-ActiveSerialPorts {
         Where-Object { $_.Name -match 'COM(\d+)' } |
         ForEach-Object {
             [PSCustomObject]@{
-                Port        = [regex]::Match($_.Name, 'COM\d+').Value
-                Name        = $_.Name
-                Description = $_.Description
-                Manufacturer= $_.Manufacturer
-                DeviceID    = $_.DeviceID
-                Status      = $_.Status
-                Present     = $_.Present
+                Port         = [regex]::Match($_.Name, 'COM\d+').Value
+                Name         = $_.Name
+                Description  = $_.Description
+                Manufacturer = $_.Manufacturer
+                DeviceID     = $_.DeviceID
+                Status       = $_.Status
+                Present      = $_.Present
             }
         } |
         Sort-Object { [int]($_.Port -replace 'COM', '') }
 }
+
+# Connect to Serial port
+function Connect-ActiveSerialPort {
+    param (
+        [Parameter(Mandatory = $true)]
+        [ValidatePattern('^(?i)COM\d+$')]
+        [string]$ComPort,
+
+        [int]$BaudRate = 9600,
+
+        [ValidateSet(5, 6, 7, 8)]
+        [int]$DataBits = 8,
+
+        [ValidateSet("None", "Odd", "Even", "Mark", "Space")]
+        [string]$Parity = "None",
+
+        [ValidateSet("One", "Two", "OnePointFive")]
+        [string]$StopBits = "One",
+
+        [ValidateSet("None", "XOnXOff", "RequestToSend", "RequestToSendXOnXOff")]
+        [string]$FlowControl = "None"
+    )
+
+    $parityEnum = [System.IO.Ports.Parity]::$Parity
+    $stopBitsEnum = [System.IO.Ports.StopBits]::$StopBits
+    $handshakeEnum = [System.IO.Ports.Handshake]::$FlowControl
+
+    $port = New-Object System.IO.Ports.SerialPort `
+        $ComPort, $BaudRate, $parityEnum, $DataBits, $stopBitsEnum
+
+    $port.Handshake = $handshakeEnum
+    $port.Encoding = [System.Text.Encoding]::ASCII
+
+    try {
+        $port.Open()
+
+        Write-Host "Connected to $ComPort ($BaudRate baud). Press Ctrl+C to exit.`n" -ForegroundColor Cyan
+        while ($true) {
+            # Read incoming data (byte-safe)
+            while ($port.BytesToRead -gt 0) {
+                $byte = $port.ReadByte()
+                if ($byte -ge 0) {
+                    [Console]::Write([char]$byte)
+                }
+            }
+
+            # Handle keyboard input
+            if ([Console]::KeyAvailable) {
+                $key = [Console]::ReadKey($true)
+
+                if ($key.Key -eq "Enter") {
+                    $port.Write("`r`n")
+                } else {
+                    $port.Write($key.KeyChar)
+                }
+            }
+        }
+    } finally {
+        if ($port.IsOpen) {
+            $port.Close()
+        }
+
+        Write-Host "`nDisconnected." -ForegroundColor Yellow
+    }
+}
+
 
 # Use wsl ssh instead of windows ssh if wsl distro exists
 if (Get-Command wsl.exe -ErrorAction SilentlyContinue) {
@@ -150,53 +223,6 @@ if (Get-Command wsl.exe -ErrorAction SilentlyContinue) {
         # Falback to windows ssh
     }
 }
-
-
-###############################
-# Active Directory Stuff
-###############################
-if (Get-Command Get-ADUser -ErrorAction SilentlyContinue) {
-    function Set-ADUserPasswordCustom {
-        param (
-            [Parameter(Mandatory)]
-            [string]$Identity,     # samAccountName
-
-            [Parameter(Mandatory)]
-            [string]$NewPassword,  # New Password
-
-            [switch]$ChangeAtLogon
-        )
-
-        # Reset password
-        Set-ADAccountPassword `
-            -Identity $Identity `
-            -Reset `
-            -NewPassword (ConvertTo-SecureString $NewPassword -AsPlainText -Force)
-
-        if ($ChangeAtLogon) {
-            # Get current user properties
-            $user = Get-ADUser -Identity $Identity -Properties PasswordNeverExpires
-
-            if ($user.PasswordNeverExpires) {
-                Write-Warning "User '$Identity' has PasswordNeverExpires set. Cannot force change at next logon."
-            } else {
-                Set-ADUser -Identity $Identity -ChangePasswordAtLogon $true
-            }
-        }
-    }
-    function Get-ADUserCustom {
-        param (
-            [Parameter(Mandatory)]
-            [ValidateSet("Name", "DisplayName", "Description", "Title", "Department", "Manager", "UserPrincipalName", "samaccountname", "mail")]
-            [string]$FilterProperty,     # samAccountName
-
-            [Parameter(Mandatory)]
-            [string]$SearchPattern   # New Password
-        )
-        Get-ADUser -Filter { $FilterProperty -like "*$SearchTerm*" } -Properties * | select Name, DisplayName, Description, Title, Department, Manager, UserPrincipalName, samaccountname, mail, Created, Modified, AccountExpirationDate, Enabled, LockedOut
-    }
-}
-
 
 
 function cdy {

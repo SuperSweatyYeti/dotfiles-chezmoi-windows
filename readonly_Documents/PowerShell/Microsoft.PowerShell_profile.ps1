@@ -51,16 +51,11 @@ if (Get-Command chezmoi.exe -ErrorAction SilentlyContinue) {
         git -C $chezmoi commit -m "update $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
         git -C $chezmoi push --force
     }
-    function cmoiOnedriveApply {
+    function cmoi-onedrive-apply {
         <#
     .SYNOPSIS
-        Copies PowerShell profile files to OneDrive-mapped Documents folders
-        so they sync to your work computer's OneDrive.
-    .DESCRIPTION
-        Uses the system-resolved Documents path (which follows OneDrive folder redirection)
-        and copies profiles from:
-          - ~\Documents\PowerShell\*        -> OneDrive Documents\PowerShell\*
-          - ~\Documents\WindowsPowerShell\* -> OneDrive Documents\WindowsPowerShell\*
+        Copies the PowerShell and WindowsPowerShell profile files to the
+        OneDrive-mapped Documents folder.
     #>
 
         $oneDriveDocs = [Environment]::GetFolderPath([System.Environment+SpecialFolder]::MyDocuments)
@@ -71,7 +66,6 @@ if (Get-Command chezmoi.exe -ErrorAction SilentlyContinue) {
             return
         }
 
-        # If they resolve to the same path, there's no OneDrive redirection
         if ($oneDriveDocs -eq $localDocs) {
             Write-Host "cmoi-onedrive-apply: Documents is not redirected to OneDrive. Nothing to do." -ForegroundColor DarkGray
             return
@@ -80,40 +74,37 @@ if (Get-Command chezmoi.exe -ErrorAction SilentlyContinue) {
         Write-Host "Local Documents:    $localDocs" -ForegroundColor DarkGray
         Write-Host "OneDrive Documents: $oneDriveDocs" -ForegroundColor DarkGray
 
-        $shells = @('PowerShell', 'WindowsPowerShell')
+        $profiles = @(
+            @{ Source = Join-Path $localDocs 'PowerShell\Microsoft.PowerShell_profile.ps1'
+                Dest  = Join-Path $oneDriveDocs 'PowerShell' 
+            }
+            @{ Source = Join-Path $localDocs 'WindowsPowerShell\Microsoft.PowerShell_profile.ps1'
+                Dest  = Join-Path $oneDriveDocs 'WindowsPowerShell' 
+            }
+        )
+
         $copied = 0
 
-        foreach ($shell in $shells) {
-            $sourceDir = Join-Path $localDocs $shell
-            if (-not (Test-Path $sourceDir)) {
-                Write-Verbose "Skipping $shell — $sourceDir does not exist"
+        foreach ($p in $profiles) {
+            if (-not (Test-Path $p.Source)) {
+                Write-Verbose "Skipping — $($p.Source) does not exist"
                 continue
             }
 
-            $profiles = Get-ChildItem -Path $sourceDir -File -Filter '*.ps1'
-            if (-not $profiles) {
-                Write-Verbose "Skipping $shell — no .ps1 files found"
-                continue
+            if (-not (Test-Path $p.Dest)) {
+                New-Item -Path $p.Dest -ItemType Directory -Force | Out-Null
+                Write-Host "  Created: $($p.Dest)" -ForegroundColor Yellow
             }
 
-            $destDir = Join-Path $oneDriveDocs $shell
-            if (-not (Test-Path $destDir)) {
-                New-Item -Path $destDir -ItemType Directory -Force | Out-Null
-                Write-Host "  Created: $destDir" -ForegroundColor Yellow
-            }
-
-            foreach ($file in $profiles) {
-                $dest = Join-Path $destDir $file.Name
-                Copy-Item -Path $file.FullName -Destination $dest -Force
-                Write-Host "  Copied: $($file.Name) -> $destDir" -ForegroundColor Green
-                $copied++
-            }
+            Copy-Item -Path $p.Source -Destination $p.Dest -Force
+            Write-Host "  Copied: $($p.Source) -> $($p.Dest)" -ForegroundColor Green
+            $copied++
         }
 
         if ($copied -eq 0) {
             Write-Host "cmoi-onedrive-apply: No profile files found to copy." -ForegroundColor DarkGray
         } else {
-            Write-Host "cmoi-onedrive-apply: Synced $copied profile file(s) to OneDrive." -ForegroundColor Cyan
+            Write-Host "cmoi-onedrive-apply: Synced $copied profile(s) to OneDrive." -ForegroundColor Cyan
         }
     }
 }
