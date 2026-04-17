@@ -155,7 +155,7 @@ if (Get-Command Get-ADUser -ErrorAction SilentlyContinue) {
             [string]$FilterProperty = "Name"     # samAccountName
         )
         $SearchString = "*" + $SearchPattern + "*" 
-        Get-ADUser -Filter { $FilterProperty -like $SearchString } -Properties * | select Name, DisplayName, Description, Title, Department, Manager, UserPrincipalName, samaccountname, mail, Created, Modified, AccountExpirationDate, Enabled, LockedOut
+        Get-ADUser -Filter { $FilterProperty -like $SearchString } -Properties * | select Name, DisplayName, Description, Title, Department, Manager, UserPrincipalName, samaccountname, mail, Created, Modified, AccountExpirationDate, Fax, Mobile, Enabled, LockedOut
     }
 }
 ###############################
