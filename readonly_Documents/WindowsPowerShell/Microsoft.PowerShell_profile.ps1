@@ -114,6 +114,68 @@ function sshnt {
     & 'C:\Windows\System32\OpenSSH\ssh.exe' @args
 }
 
+# Networking functions
+function Get-NetInfoAll {
+    Get-NetAdapter | ForEach-Object {
+        $adapter = $_
+
+        $ipv4 = Get-NetIPAddress -InterfaceIndex $adapter.ifIndex -AddressFamily IPv4 -ErrorAction SilentlyContinue |
+            Select-Object -ExpandProperty IPAddress
+
+        $ipv6 = Get-NetIPAddress -InterfaceIndex $adapter.ifIndex -AddressFamily IPv6 -ErrorAction SilentlyContinue |
+            Select-Object -ExpandProperty IPAddress
+
+        $dns = Get-DnsClientServerAddress -InterfaceIndex $adapter.ifIndex -ErrorAction SilentlyContinue
+
+        $dnsIPv4 = $dns.ServerAddresses | Where-Object {
+            $_ -match '^\d{1,3}(\.\d{1,3}){3}$'
+        }
+
+        $dnsIPv6 = $dns.ServerAddresses | Where-Object {
+            $_ -match ':'
+        }
+
+        $gatewayIPv4 = Get-NetRoute -InterfaceIndex $adapter.ifIndex -DestinationPrefix "0.0.0.0/0" -ErrorAction SilentlyContinue |
+            Select-Object -ExpandProperty NextHop
+
+        $gatewayIPv6 = Get-NetRoute -InterfaceIndex $adapter.ifIndex -DestinationPrefix "::/0" -ErrorAction SilentlyContinue |
+            Select-Object -ExpandProperty NextHop
+
+        $dnsClient = Get-DnsClient -InterfaceIndex $adapter.ifIndex -ErrorAction SilentlyContinue
+
+        $ipInterface = Get-NetIPInterface -InterfaceIndex $adapter.ifIndex -AddressFamily IPv4 -ErrorAction SilentlyContinue
+
+        $adapterConfig = Get-CimInstance Win32_NetworkAdapterConfiguration |
+            Where-Object { $_.InterfaceIndex -eq $adapter.ifIndex }
+
+        [PSCustomObject]@{
+            InterfaceAlias        = $adapter.Name
+            InterfaceDescription  = $adapter.InterfaceDescription
+            InterfaceIndex        = $adapter.ifIndex
+            Status                = $adapter.Status
+            MACAddress            = $adapter.MacAddress
+            LinkSpeed             = $adapter.LinkSpeed
+
+            IPv4Addresses         = $ipv4
+            IPv6Addresses         = $ipv6
+
+            GatewayIPv4           = $gatewayIPv4
+            GatewayIPv6           = $gatewayIPv6
+
+            DNSIPv4Servers        = $dnsIPv4
+            DNSIPv6Servers        = $dnsIPv6
+
+            DNSSuffix             = $dnsClient.ConnectionSpecificSuffix
+            DNSSearchList         = $dnsClient.SuffixSearchList
+
+            DHCPEnabled           = $ipInterface.Dhcp
+            DHCPServer            = $adapterConfig.DHCPServer
+            DHCPLeaseObtained     = $adapterConfig.DHCPLeaseObtained
+            DHCPLeaseExpires      = $adapterConfig.DHCPLeaseExpires
+        }
+    }
+}
+
 ###############################
 # Active Directory Stuff
 ###############################
