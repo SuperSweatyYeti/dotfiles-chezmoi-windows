@@ -151,11 +151,11 @@ if (Get-Command Get-ADUser -ErrorAction SilentlyContinue) {
             [string]$SearchPattern,
 
             [Parameter(Mandatory=$false)]
-            [ValidateSet("Name", "DisplayName", "Description", "Title", "Department", "Manager", "UserPrincipalName", "samaccountname", "mail")]
+            [ValidateSet("Name", "DisplayName", "Description", "Title", "Department", "Manager", "UserPrincipalName", "samaccountname", "mail", "DistinguishedName", "CanonicalName")]
             [string]$FilterProperty = "Name"     # samAccountName
         )
         $SearchString = "*" + $SearchPattern + "*" 
-        Get-ADUser -Filter { $FilterProperty -like $SearchString } -Properties * | select Name, DisplayName, Description, Title, Department, Manager, UserPrincipalName, samaccountname, mail, Created, Modified, AccountExpirationDate, Fax, Mobile, Enabled, LockedOut, LastLogonDate
+        Get-ADUser -Filter { $FilterProperty -like $SearchString } -Properties * | select Name, DisplayName, Description, Title, Department, Manager, UserPrincipalName, samaccountname, mail, Created, Modified, AccountExpirationDate, Fax, Mobile, Enabled, LockedOut, LastLogonDate, DistinguishedName, CanonicalName
     }
 }
 ###############################

@@ -8,20 +8,20 @@
     "keybindings": 
     [
         {
-            "id": "Terminal.PrevTab",
-            "keys": "ctrl+shift+["
-        },
-        {
             "id": "User.sendInput.42123734",
             "keys": "ctrl+n"
         },
         {
-            "id": "Terminal.NextTab",
-            "keys": "ctrl+shift+]"
+            "id": "Terminal.PrevTab",
+            "keys": "ctrl+shift+["
         },
         {
             "id": "Terminal.ToggleCommandPalette",
             "keys": "ctrl+shift+p"
+        },
+        {
+            "id": "Terminal.NextTab",
+            "keys": "ctrl+shift+]"
         },
         {
             "id": "User.sendInput.4B548C6C",
@@ -120,6 +120,12 @@
                 "hidden": true,
                 "name": "Visual Studio Debug Console",
                 "source": "VSDebugConsole"
+            },
+            {
+                "guid": "{5fb123f1-af88-5b5c-8953-d14a8def1978}",
+                "hidden": false,
+                "name": "PowerShell 7",
+                "source": "Windows.Terminal.PowershellCore"
             }
         ]
     },
